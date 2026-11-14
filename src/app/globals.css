@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+:root {
+  --brand: #b91c1c;
+  --accent: #111827;
+  --c1: #dc2626;
+  --c2: #2563eb;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-board: var(--font-oswald);
+  --color-brand: var(--brand);
+  --color-accent: var(--accent);
+  --color-c1: var(--c1);
+  --color-c2: var(--c2);
+}
+
+body {
+  background: #f6f7f9;
+  color: #0f172a;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-800 shadow-sm transition select-none hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-transparent bg-brand text-white hover:bg-brand hover:brightness-110;
+  }
+  .btn-dark {
+    @apply border-transparent bg-slate-900 text-white hover:bg-slate-800;
+  }
+  .btn-danger {
+    @apply border-red-200 text-red-700 hover:bg-red-50;
+  }
+  .btn-sm {
+    @apply px-2.5 py-1 text-xs;
+  }
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20;
+  }
+  .label {
+    @apply mb-1 block text-xs font-semibold tracking-wide text-slate-500 uppercase;
+  }
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white p-5 shadow-sm;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700;
+  }
+  .th {
+    @apply px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase;
+  }
+  .td {
+    @apply px-3 py-2 align-middle text-sm;
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+summary {
+  cursor: pointer;
+}
