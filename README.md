@@ -149,7 +149,7 @@ Copiá `.env.example` a `.env` y completá los valores antes del primer arranque
 
 1. Creá un proyecto en Railway desde este repositorio de GitHub.
 2. Agregá un servicio PostgreSQL al mismo proyecto.
-3. En el servicio de la app, pestaña Variables, cargá `DATABASE_URL` como referencia a la del Postgres (`${{Postgres.DATABASE_URL}}`), `AUTH_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` y `NEXT_PUBLIC_APP_NAME`.
+3. En el servicio de la app, pestaña Variables, cargá `DATABASE_URL` como referencia a la del Postgres (`${{Postgres.DATABASE_URL}}`), `AUTH_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` y `NEXT_PUBLIC_APP_NAME`. Railway precarga los valores de `.env.example`: reemplazalos todos. La app no arranca con el `AUTH_SECRET` ni con el administrador de ejemplo.
 4. Railway detecta los comandos solo: compila con `npm run build` y arranca con `npm run start`, que aplica las migraciones, crea el administrador si falta y levanta el servidor en el puerto asignado.
 5. En Settings → Networking, generá un dominio público.
 

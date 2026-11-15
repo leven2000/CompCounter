@@ -11,7 +11,9 @@ const WEEK = 60 * 60 * 24 * 7
 
 function secret() {
   const value = process.env.AUTH_SECRET
-  if (!value || value.length < 16) throw new Error('Falta AUTH_SECRET (16+ caracteres)')
+  if (!value || value.length < 16 || value === 'cadena-aleatoria-larga') {
+    throw new Error('Falta AUTH_SECRET (16+ caracteres, distinto del ejemplo)')
+  }
   return new TextEncoder().encode(value)
 }
 
