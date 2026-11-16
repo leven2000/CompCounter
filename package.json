@@ -9,7 +9,8 @@
     "db": "node scripts/dev-db.mjs",
     "db:migrate": "prisma migrate dev",
     "db:bootstrap": "node --env-file=.env scripts/bootstrap.mjs",
-    "lint": "eslint"
+    "lint": "eslint",
+    "probar:puntaje": "node scripts/probar-puntaje.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -35,6 +36,6 @@
     "typescript": "^5"
   },
   "engines": {
-    "node": ">=20.9"
+    "node": "24.x"
   }
 }

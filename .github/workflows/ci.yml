@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Migraciones, lint, tipos, pruebas y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: compcounter_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/compcounter_ci
+      AUTH_SECRET: ci-secreto-descartable-no-usar-en-produccion
+      NEXT_TELEMETRY_DISABLED: '1'
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: package.json
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Generar el cliente de Prisma
+        run: npx prisma generate
+
+      - name: Aplicar las migraciones desde cero
+        run: npx prisma migrate deploy
+
+      - name: Verificar que el esquema no cambió sin migración
+        run: >-
+          npx prisma migrate diff
+          --from-schema-datasource prisma/schema.prisma
+          --to-schema-datamodel prisma/schema.prisma
+          --exit-code
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Pruebas de puntaje y sanciones
+        run: npm run probar:puntaje
+
+      - name: Generar los tipos de rutas
+        run: npx next typegen
+
+      - name: Chequeo de tipos
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build

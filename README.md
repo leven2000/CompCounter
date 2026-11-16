@@ -110,7 +110,7 @@ flowchart LR
 
 ## Desarrollo local
 
-Requiere Node 20.9 o superior. No hace falta instalar Postgres: el proyecto trae uno embebido para desarrollo.
+Requiere Node 24. No hace falta instalar Postgres: el proyecto trae uno embebido para desarrollo.
 
 ```bash
 npm install
@@ -154,6 +154,22 @@ Copiá `.env.example` a `.env` y completá los valores antes del primer arranque
 5. En Settings → Networking, generá un dominio público.
 
 Dejá el servicio en **una sola réplica**: el canal en vivo entre jueces, mesa y TV vive en la memoria del proceso. Para escalar hay que pasarlo a Redis o a `LISTEN/NOTIFY` de Postgres ([`src/lib/bus.ts`](src/lib/bus.ts)).
+
+## Integración continua
+
+Cada push a `main` y cada pull request corren en GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
+
+1. Aplica todas las migraciones desde cero sobre un Postgres efímero.
+2. Controla que el esquema no haya cambiado sin su migración.
+3. Corre lint, las pruebas de puntaje y sanciones, el chequeo de tipos y el build.
+
+Railway despliega solo cada commit que llega a `main`. Con la opción **Wait for CI** del servicio (Settings → Source), espera a que el CI termine y saltea el despliegue si falla.
+
+Las pruebas de puntaje también corren en local:
+
+```bash
+npm run probar:puntaje
+```
 
 ## Modalidades incluidas
 
