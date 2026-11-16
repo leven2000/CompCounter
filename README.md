@@ -12,6 +12,7 @@ Kickboxing · Jiu-jitsu · Grappling · Point Fighting
 ![Prisma](https://img.shields.io/badge/Prisma-2D3748?logo=prisma&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_4-06B6D4?logo=tailwindcss&logoColor=white)
+[![CI](https://github.com/leven2000/CompCounter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/leven2000/CompCounter/actions/workflows/ci.yml)
 
 ![Tablero de kickboxing en la TV](docs/screenshots/tv-kickboxing.png)
 
