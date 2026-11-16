@@ -164,7 +164,13 @@ Dejá el servicio en **una sola réplica**: el canal en vivo entre jueces, mesa 
 - Grappling solo finalización.
 - Genérico por puntos.
 
-Las sanciones automáticas se pueden apagar por categoría. Conviene hacerlas revisar por un árbitro antes de usarlas en un torneo oficial.
+Las sanciones se ajustan por categoría o por combate suelto, y la mesa puede cambiarlas para una pelea puntual:
+
+- **Sanciones automáticas:** se pueden apagar.
+- **Descalificación directa:** a cuántas advertencias o penalizaciones corresponde descalificar (0 = nunca).
+- **Punto negativo:** resta al sancionado o suma al rival, con valor configurable. Con jueces se aplica en cada tarjeta. También se puede habilitar en jiu-jitsu.
+
+Conviene hacerlas revisar por un árbitro antes de usarlas en un torneo oficial.
 
 ## Límites conocidos
 

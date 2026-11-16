@@ -11,7 +11,7 @@ import { findCountry } from "@/lib/countries";
 import { publish, tableAction } from "@/lib/live";
 import { createDemo } from "@/lib/demo";
 import { ensureQuickArea } from "@/lib/quick";
-import { getRuleset } from "@/lib/rules";
+import { getRuleset, readSanctions } from "@/lib/rules";
 import { int, isHexColor, newCode, num, optStr, slugify, str } from "@/lib/util";
 
 const go = (path: string, kind: "ok" | "error", message: string): never =>
@@ -172,6 +172,11 @@ async function categoryData(formData: FormData, tournamentId: string) {
     format: ["AUTO", "SINGLE", "ROUND_ROBIN"].includes(format) ? format : "AUTO",
     thirdPlaceMatch: formData.get("thirdPlaceMatch") === "on",
     autoLadder: formData.get("autoLadder") === "on",
+    ...readSanctions({
+      dqAt: str(formData, "dqAt"),
+      minusMode: str(formData, "minusMode"),
+      minusValue: str(formData, "minusValue"),
+    }),
     areaId: area?.id ?? null,
   };
 }

@@ -2,12 +2,12 @@ import Link from "next/link";
 import { countryName } from "@/lib/countries";
 import type { MatchReportData } from "@/lib/history";
 import { EVENT_LABEL } from "@/lib/labels";
-import type { Corner } from "@/lib/rules";
+import { sanctionsSummary, type Corner } from "@/lib/rules";
 import { Flag } from "./bits";
 import { LocalTime, PrintButton } from "./client-bits";
 
 export function MatchReport({ data, backHref }: { data: MatchReportData; backHref: string }) {
-  const { match, rules, score, cards, lastRound, log } = data;
+  const { match, rules, options, dqAt, score, cards, lastRound, log } = data;
   const org = match.category.tournament.org;
   const cornerName = (corner: string) => (corner === "RED" ? org.corner1Name : org.corner2Name);
   const winner: Corner = match.winnerEntryId === match.redEntryId ? "RED" : "BLUE";
@@ -27,7 +27,7 @@ export function MatchReport({ data, backHref }: { data: MatchReportData; backHre
   if (rules.advantages) totals.push(["Ventajas", score.sides.RED.advTotal, score.sides.BLUE.advTotal]);
   if (rules.penalties) totals.push(["Penalizaciones", score.sides.RED.pen, score.sides.BLUE.pen]);
   if (rules.warnings) totals.push(["Advertencias", score.sides.RED.warn, score.sides.BLUE.warn]);
-  if (rules.minusPoints) {
+  if (options.minusEnabled) {
     totals.push(["Puntos negativos", score.sides.RED.minusTotal, score.sides.BLUE.minusTotal]);
   }
   if (rules.knockdowns) totals.push(["Knockdowns a favor", score.sides.RED.kd, score.sides.BLUE.kd]);
@@ -158,6 +158,10 @@ export function MatchReport({ data, backHref }: { data: MatchReportData; backHre
               ))}
             </tbody>
           </table>
+          <p className="mt-3 text-xs text-slate-500">
+            {sanctionsSummary(rules, { ...options, dqAt })}
+            {match.customRules ? " (reglas propias de esta pelea)" : ""}
+          </p>
         </section>
       )}
 

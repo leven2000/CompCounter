@@ -97,6 +97,9 @@ model Category {
   format          String     @default("AUTO")
   thirdPlaceMatch Boolean    @default(false)
   autoLadder      Boolean    @default(true)
+  dqAt            Int?
+  minusMode       String?
+  minusValue      Int?
   bracketFormat   String?
   areaId          String?
   area            Area?      @relation(fields: [areaId], references: [id], onDelete: SetNull)
@@ -172,6 +175,10 @@ model Match {
   clockStartedAt   DateTime?
   finishedAt       DateTime?
   scheduledAt      DateTime?
+  customRules      Boolean      @default(false)
+  dqAt             Int?
+  minusMode        String?
+  minusValue       Int?
   events           ScoreEvent[]
   judgeCodes       MatchJudge[]
   currentInArea    Area?        @relation("AreaCurrent")

@@ -7,9 +7,13 @@ import { countryName } from './countries'
 import { countryCode3 } from './country-codes'
 import {
   computeScore,
+  dqLimit,
   getRuleset,
+  readSanctions,
+  scoreOptions,
   type Corner,
   type JudgeTotals,
+  type Sanctions,
   type SideTotals,
 } from './rules'
 
@@ -53,7 +57,11 @@ export type MatchView = {
     exits: boolean
     winMethods: string[]
     leadLimit: number | null
+    minusValue: number
+    minusToRival: boolean
+    dqAt: number
   }
+  sanctions: Sanctions & { custom: boolean }
   rounds: number
   roundSeconds: number
   red: FighterView | null
@@ -178,7 +186,9 @@ async function settle(m: MatchFull): Promise<MatchFull> {
 
 function matchView(m: MatchFull, judgeCount: number): MatchView {
   const rules = getRuleset(m.category.ruleset)
-  const score = computeScore(rules, m.events, judgeCount, m.category.rounds, m.category.autoLadder)
+  const options = scoreOptions(rules, m.category, m)
+  const score = computeScore(rules, m.events, judgeCount, m.category.rounds, options)
+  const source = m.customRules ? m : m.category
   let winner: Corner | null = null
   if (m.winnerEntryId) winner = m.winnerEntryId === m.redEntryId ? 'RED' : 'BLUE'
   return {
@@ -195,11 +205,20 @@ function matchView(m: MatchFull, judgeCount: number): MatchView {
       advantages: rules.advantages,
       penalties: rules.penalties,
       warnings: rules.warnings,
-      minusPoints: rules.minusPoints,
+      minusPoints: options.minusEnabled,
       knockdowns: rules.knockdowns,
       exits: rules.exits,
       winMethods: rules.winMethods,
       leadLimit: rules.leadLimit,
+      minusValue: options.minusValue,
+      minusToRival: options.minusToRival,
+      dqAt: dqLimit(rules, options),
+    },
+    sanctions: {
+      custom: m.customRules,
+      dqAt: source.dqAt,
+      minusMode: source.minusMode,
+      minusValue: source.minusValue,
     },
     rounds: m.category.rounds,
     roundSeconds: m.category.roundSeconds,
@@ -476,6 +495,14 @@ export async function tableAction(areaId: string, body: Record<string, unknown>)
       })
       return done
     }
+    case 'rules': {
+      const data =
+        body.reset === true
+          ? { customRules: false, dqAt: null, minusMode: null, minusValue: null }
+          : { customRules: true, ...readSanctions(body) }
+      await db.match.update({ where: { id: m.id }, data })
+      return done
+    }
     case 'undo': {
       const last = [...m.events].reverse().find((e) => e.type !== 'JUDGE' && e.type !== 'DECISION')
       if (!last) return fail('No hay nada para deshacer')
@@ -490,7 +517,13 @@ export async function tableAction(areaId: string, body: Record<string, unknown>)
       const loserEntryId = winner === 'RED' ? m.blueEntryId : m.redEntryId
       if (!winnerEntryId) return fail('Falta el competidor ganador')
       const rules = getRuleset(m.category.ruleset)
-      const score = computeScore(rules, m.events, area.judges, m.category.rounds, m.category.autoLadder)
+      const score = computeScore(
+        rules,
+        m.events,
+        area.judges,
+        m.category.rounds,
+        scoreOptions(rules, m.category, m),
+      )
       const resultSummary =
         rules.mode === 'judges'
           ? `${score.favor.RED}-${score.favor.BLUE} en tarjetas`

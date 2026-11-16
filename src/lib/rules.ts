@@ -207,6 +207,82 @@ export function getRuleset(id: string): Ruleset {
   return RULESETS.find((r) => r.id === id) ?? RULESETS[RULESETS.length - 1]
 }
 
+export type Sanctions = {
+  dqAt: number | null
+  minusMode: string | null
+  minusValue: number | null
+}
+
+export type ScoreOptions = {
+  autoLadder: boolean
+  dqAt: number | null
+  minusEnabled: boolean
+  minusToRival: boolean
+  minusValue: number
+}
+
+export const MINUS_MODES = ['SUBTRACT', 'RIVAL']
+
+export function readSanctions(input: { dqAt?: unknown; minusMode?: unknown; minusValue?: unknown }): Sanctions {
+  const whole = (raw: unknown, min: number, max: number) => {
+    if (raw == null || raw === '') return null
+    const n = Math.round(Number(raw))
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : null
+  }
+  const mode = String(input.minusMode ?? '')
+  return {
+    dqAt: whole(input.dqAt, 0, 20),
+    minusMode: MINUS_MODES.includes(mode) ? mode : null,
+    minusValue: whole(input.minusValue, 1, 10),
+  }
+}
+
+export function scoreOptions(
+  rules: Ruleset,
+  category: Sanctions & { autoLadder: boolean },
+  match?: Sanctions & { customRules: boolean },
+): ScoreOptions {
+  const source = match?.customRules ? match : category
+  const mode = MINUS_MODES.includes(source.minusMode ?? '') ? source.minusMode : null
+  return {
+    autoLadder: category.autoLadder,
+    dqAt: source.dqAt,
+    minusEnabled: rules.minusPoints || mode != null,
+    minusToRival: mode === 'RIVAL',
+    minusValue: source.minusValue ?? (rules.minusValue || 1),
+  }
+}
+
+export function dqLimit(rules: Ruleset, options: ScoreOptions) {
+  if (options.dqAt != null) return options.dqAt
+  if (!options.autoLadder) return 0
+  const step = [...rules.warningLadder, ...rules.penaltyLadder].find((s) => s.effect === 'dq')
+  return step?.at ?? 0
+}
+
+export function sanctionsSummary(
+  rules: { mode: Ruleset['mode']; warnings: boolean },
+  s: { dqAt: number; minusEnabled: boolean; minusToRival: boolean; minusValue: number },
+) {
+  const [one, many] = rules.warnings ? ['advertencia', 'advertencias'] : ['penalización', 'penalizaciones']
+  const parts = [
+    s.dqAt <= 0
+      ? 'Sin descalificación automática'
+      : s.dqAt === 1
+        ? `Descalificación a la primera ${one}`
+        : `Descalificación a las ${s.dqAt} ${many}`,
+  ]
+  if (s.minusEnabled) {
+    const each = rules.mode === 'judges' ? ' por juez' : ''
+    parts.push(
+      s.minusToRival
+        ? `Punto negativo: suma ${s.minusValue} al rival${each}`
+        : `Punto negativo: resta ${s.minusValue}${each}`,
+    )
+  }
+  return parts.join(' · ')
+}
+
 export type EventRow = {
   type: string
   corner: string
@@ -254,10 +330,6 @@ function ladderSum(steps: LadderStep[], count: number, effect: LadderStep['effec
     .reduce((acc, s) => acc + (s.value ?? 1), 0)
 }
 
-function ladderDq(steps: LadderStep[], count: number) {
-  return steps.some((s) => s.effect === 'dq' && count >= s.at)
-}
-
 function emptySide(): SideTotals {
   return {
     points: 0,
@@ -289,8 +361,10 @@ export function computeScore(
   events: EventRow[],
   judgeCount: number,
   lastRound: number,
-  autoLadder: boolean,
+  options: ScoreOptions,
 ): ScoreResult {
+  const { autoLadder, minusValue } = options
+  const limit = dqLimit(rules, options)
   const sides: Record<Corner, SideTotals> = { RED: emptySide(), BLUE: emptySide() }
   const clicks = new Map<number, { red: number; blue: number; lastRed: number; lastBlue: number }>()
   const decisions = new Map<number, Corner>()
@@ -317,15 +391,19 @@ export function computeScore(
 
   for (const c of CORNERS) {
     const s = sides[c]
-    s.minusTotal = s.minus + (autoLadder ? ladderSum(rules.warningLadder, s.warn, 'minus') : 0)
-    s.dq = autoLadder && (ladderDq(rules.warningLadder, s.warn) || ladderDq(rules.penaltyLadder, s.pen))
+    s.minusTotal = options.minusEnabled
+      ? s.minus + (autoLadder ? ladderSum(rules.warningLadder, s.warn, 'minus') : 0)
+      : 0
+    s.dq = limit > 0 && ((rules.warnings && s.warn >= limit) || (rules.penalties && s.pen >= limit))
   }
+  const minusEffect = (c: Corner) =>
+    options.minusToRival ? minusValue * sides[other(c)].minusTotal : -minusValue * sides[c].minusTotal
   for (const c of CORNERS) {
     const s = sides[c]
     const rival = sides[other(c)]
     s.score =
-      s.points -
-      rules.minusValue * s.minusTotal +
+      s.points +
+      minusEffect(c) +
       (autoLadder ? ladderSum(rules.penaltyLadder, rival.pen, 'points') : 0)
     s.advTotal = s.adv + (autoLadder ? ladderSum(rules.penaltyLadder, rival.pen, 'advantage') : 0)
   }
@@ -337,8 +415,8 @@ export function computeScore(
   if (rules.mode === 'judges') {
     for (let seat = 1; seat <= judgeCount; seat++) {
       const row = clicks.get(seat) ?? { red: 0, blue: 0, lastRed: 0, lastBlue: 0 }
-      const red = row.red + rules.knockdownValue * sides.RED.kd - rules.minusValue * sides.RED.minusTotal
-      const blue = row.blue + rules.knockdownValue * sides.BLUE.kd - rules.minusValue * sides.BLUE.minusTotal
+      const red = row.red + rules.knockdownValue * sides.RED.kd + minusEffect('RED')
+      const blue = row.blue + rules.knockdownValue * sides.BLUE.kd + minusEffect('BLUE')
       const decision = decisions.get(seat) ?? null
       let fav: Corner | null = null
       if (red !== blue) fav = red > blue ? 'RED' : 'BLUE'

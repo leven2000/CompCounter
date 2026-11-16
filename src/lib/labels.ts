@@ -8,3 +8,9 @@ export const EVENT_LABEL: Record<string, string> = {
   EXIT: 'Salida',
   DECISION: 'Decisión de juez',
 }
+
+export const MINUS_MODE_OPTIONS: [string, string][] = [
+  ['', 'Según modalidad'],
+  ['SUBTRACT', 'Resta al sancionado'],
+  ['RIVAL', 'Suma al rival'],
+]

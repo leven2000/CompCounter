@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { db } from './db'
-import { computeScore, getRuleset } from './rules'
+import { computeScore, dqLimit, getRuleset, scoreOptions } from './rules'
 
 export type HistoryFilters = {
   scope?: Prisma.TournamentWhereInput
@@ -117,7 +117,8 @@ export async function loadMatchReport(matchId: string, scope?: Prisma.Tournament
     match.category.area?.judges ?? 0,
     ...match.events.filter((e) => e.judge != null).map((e) => e.judge ?? 0),
   )
-  const score = computeScore(rules, match.events, seats, match.category.rounds, match.category.autoLadder)
+  const options = scoreOptions(rules, match.category, match)
+  const score = computeScore(rules, match.events, seats, match.category.rounds, options)
   const lastRound = Math.max(match.category.rounds, ...match.events.map((e) => e.round))
 
   const cards = Array.from({ length: rules.mode === 'judges' ? seats : 0 }, (_, i) => {
@@ -136,6 +137,8 @@ export async function loadMatchReport(matchId: string, scope?: Prisma.Tournament
   return {
     match,
     rules,
+    options,
+    dqAt: dqLimit(rules, options),
     score,
     cards,
     lastRound,

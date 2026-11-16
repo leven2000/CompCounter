@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { brandStyle, type Brand } from "@/lib/brand";
 import type { MatchView, QueueItem } from "@/lib/live";
-import { EVENT_LABEL } from "@/lib/labels";
-import { formatClock, type Corner } from "@/lib/rules";
+import { EVENT_LABEL, MINUS_MODE_OPTIONS } from "@/lib/labels";
+import { formatClock, sanctionsSummary, type Corner } from "@/lib/rules";
 import { Flag } from "@/components/bits";
 import { act, phaseLabel, useLive, usePhaseBeep, useRemaining } from "./useLive";
 
@@ -59,6 +59,15 @@ function CornerPanel({
   const rules = match.rules;
   const event = (type: string, value: number) => send({ action: "event", type, corner, value });
   const autoMinus = side.minusTotal - side.minus;
+  const perJudge = rules.mode === "judges" ? " por juez" : "";
+  const minusNote = [
+    rules.minusToRival
+      ? `Cada uno suma ${rules.minusValue} al rival${perJudge}`
+      : `Cada uno resta ${rules.minusValue}${perJudge}`,
+    autoMinus > 0 ? `${autoMinus} por advertencias` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -132,7 +141,7 @@ function CornerPanel({
           <Counter
             label="Puntos negativos"
             value={side.minusTotal}
-            note={autoMinus > 0 ? `${autoMinus} por advertencias` : undefined}
+            note={minusNote}
             onAdd={() => event("MINUS", 1)}
             onRemove={() => event("MINUS", -1)}
           />
@@ -160,6 +169,97 @@ function CornerPanel({
         )}
       </div>
     </section>
+  );
+}
+
+function SanctionEditor({ match, live, send }: { match: MatchView; live: boolean; send: Send }) {
+  const current = match.sanctions;
+  const [dqAt, setDqAt] = useState(current.dqAt == null ? "" : String(current.dqAt));
+  const [minusMode, setMinusMode] = useState(current.minusMode ?? "");
+  const [minusValue, setMinusValue] = useState(current.minusValue == null ? "" : String(current.minusValue));
+
+  return (
+    <details className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <summary className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="font-semibold">Sanciones de esta pelea</span>
+        <span className="text-sm text-slate-500">
+          {sanctionsSummary(match.rules, {
+            dqAt: match.rules.dqAt,
+            minusEnabled: match.rules.minusPoints,
+            minusToRival: match.rules.minusToRival,
+            minusValue: match.rules.minusValue,
+          })}
+        </span>
+        {current.custom && <span className="badge bg-amber-100 text-amber-800">Propias de esta pelea</span>}
+      </summary>
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div>
+          <label className="label" htmlFor="mesa-dqAt">
+            Descalificación directa
+          </label>
+          <input
+            id="mesa-dqAt"
+            type="number"
+            min={0}
+            max={20}
+            value={dqAt}
+            onChange={(e) => setDqAt(e.target.value)}
+            placeholder="Según modalidad"
+            className="input"
+          />
+          <p className="mt-1 text-xs text-slate-500">Advertencias o penalizaciones. 0 = nunca.</p>
+        </div>
+        <div>
+          <label className="label" htmlFor="mesa-minusMode">
+            Punto negativo
+          </label>
+          <select
+            id="mesa-minusMode"
+            value={minusMode}
+            onChange={(e) => setMinusMode(e.target.value)}
+            className="input"
+          >
+            {MINUS_MODE_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="mesa-minusValue">
+            Valor del punto negativo
+          </label>
+          <input
+            id="mesa-minusValue"
+            type="number"
+            min={1}
+            max={10}
+            value={minusValue}
+            onChange={(e) => setMinusValue(e.target.value)}
+            placeholder="Según modalidad"
+            className="input"
+          />
+          <p className="mt-1 text-xs text-slate-500">Con jueces, se aplica en cada tarjeta.</p>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="btn btn-dark"
+          disabled={!live}
+          onClick={() => send({ action: "rules", dqAt, minusMode, minusValue })}
+        >
+          Guardar para esta pelea
+        </button>
+        {current.custom && (
+          <button type="button" className="btn" disabled={!live} onClick={() => send({ action: "rules", reset: true })}>
+            Volver a las de la categoría
+          </button>
+        )}
+        <p className="text-xs text-slate-500">Se aplica a toda la pelea, también a lo ya cargado.</p>
+      </div>
+    </details>
   );
 }
 
@@ -412,6 +512,19 @@ export function MesaConsole({
               <CornerPanel match={match} corner="RED" brand={brand} send={send} />
               <CornerPanel match={match} corner="BLUE" brand={brand} send={send} />
             </div>
+
+            <SanctionEditor
+              key={[
+                match.id,
+                match.sanctions.custom,
+                match.sanctions.dqAt,
+                match.sanctions.minusMode,
+                match.sanctions.minusValue,
+              ].join(":")}
+              match={match}
+              live={live}
+              send={send}
+            />
 
             {match.rules.mode === "judges" && (
               <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

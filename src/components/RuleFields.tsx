@@ -1,3 +1,4 @@
+import { MINUS_MODE_OPTIONS } from "@/lib/labels";
 import { RULESETS } from "@/lib/rules";
 
 export const mmss = (seconds: number) =>
@@ -11,6 +12,9 @@ type Values = {
   format: string;
   thirdPlaceMatch: boolean;
   autoLadder: boolean;
+  dqAt: number | null;
+  minusMode: string | null;
+  minusValue: number | null;
   areaId: string | null;
 };
 
@@ -147,6 +151,55 @@ export function RuleFields({
           />
           Sanciones automáticas
         </label>
+      </div>
+      <div>
+        <label className="label" htmlFor={id("dqAt")}>
+          Descalificación directa
+        </label>
+        <input
+          id={id("dqAt")}
+          name="dqAt"
+          type="number"
+          min={0}
+          max={20}
+          defaultValue={values?.dqAt ?? ""}
+          placeholder="Según modalidad"
+          className="input"
+        />
+        <p className="mt-1 text-xs text-slate-500">Advertencias o penalizaciones. 0 = nunca.</p>
+      </div>
+      <div>
+        <label className="label" htmlFor={id("minusMode")}>
+          Punto negativo
+        </label>
+        <select
+          id={id("minusMode")}
+          name="minusMode"
+          defaultValue={values?.minusMode ?? ""}
+          className="input"
+        >
+          {MINUS_MODE_OPTIONS.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="label" htmlFor={id("minusValue")}>
+          Valor del punto negativo
+        </label>
+        <input
+          id={id("minusValue")}
+          name="minusValue"
+          type="number"
+          min={1}
+          max={10}
+          defaultValue={values?.minusValue ?? ""}
+          placeholder="Según modalidad"
+          className="input"
+        />
+        <p className="mt-1 text-xs text-slate-500">Con jueces, se aplica en cada tarjeta.</p>
       </div>
     </div>
   );
