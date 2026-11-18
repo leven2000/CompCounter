@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DESKTOP } from "@/lib/desktop";
 import { loadMesa } from "@/lib/mesa";
 import { MesaConsole } from "@/components/live/MesaConsole";
 
@@ -32,7 +33,7 @@ export default async function MesaControlPage({ params, searchParams }: PageProp
           ))}
         </nav>
       )}
-      <MesaConsole key={areaId} areaId={areaId} code={mesa.code} initialBrand={mesa.brand} />
+      <MesaConsole key={areaId} areaId={areaId} code={mesa.code} initialBrand={mesa.brand} desktop={DESKTOP} />
     </>
   );
 }

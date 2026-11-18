@@ -70,6 +70,9 @@ jobs:
       - name: Pruebas de la carga desde Excel
         run: npm run probar:importacion
 
+      - name: Pruebas de los controles de jueces
+        run: npm run probar:controles
+
       - name: Generar los tipos de rutas
         run: npx next typegen
 

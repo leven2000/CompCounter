@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function MesaNav({ code }: { code: string }) {
+export function MesaNav({ code, desktop = false }: { code: string; desktop?: boolean }) {
   const pathname = usePathname();
   const base = `/mesa/${code}`;
   const items = [
@@ -11,6 +11,7 @@ export function MesaNav({ code }: { code: string }) {
     { href: `${base}/llaves`, label: "Llaves" },
     { href: `${base}/competidores`, label: "Competidores" },
     { href: `${base}/pantallas`, label: "Pantallas" },
+    ...(desktop ? [{ href: `${base}/controles`, label: "Controles" }] : []),
   ];
   return (
     <nav className="flex flex-wrap items-center gap-1">

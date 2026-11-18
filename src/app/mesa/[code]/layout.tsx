@@ -1,4 +1,5 @@
 import { brandStyle } from "@/lib/brand";
+import { DESKTOP } from "@/lib/desktop";
 import { loadMesa } from "@/lib/mesa";
 import { BrandLogo } from "@/components/bits";
 import { InvalidCode } from "@/components/InvalidCode";
@@ -20,7 +21,7 @@ export default async function MesaLayout({ children, params }: LayoutProps<"/mes
               <p className="text-xs opacity-70">{mesa.brand.name}</p>
             </div>
           </div>
-          <MesaNav code={mesa.code} />
+          <MesaNav code={mesa.code} desktop={DESKTOP} />
         </div>
       </header>
       {children}

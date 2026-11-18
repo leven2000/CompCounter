@@ -5,6 +5,7 @@ import { mesaLink, qrSvg, tvLink, type AccessLink } from "@/lib/access-links";
 import { COUNTRIES } from "@/lib/countries";
 import { ensureQuickArea } from "@/lib/quick";
 import { getRuleset } from "@/lib/rules";
+import { DESKTOP } from "@/lib/desktop";
 import { baseUrl } from "@/lib/server-url";
 import { AccessCard } from "@/components/AccessCard";
 import { Notice } from "@/components/bits";
@@ -86,7 +87,7 @@ export default async function QuickMatchPage({ searchParams }: PageProps<"/panel
   });
   const live = current?.currentMatch?.status === "LIVE" ? current.currentMatch : null;
   const judgeLinks: AccessLink[] = [];
-  if (live && getRuleset(live.category.ruleset).mode === "judges") {
+  if (!DESKTOP && live && getRuleset(live.category.ruleset).mode === "judges") {
     for (const row of await ensureMatchJudges(live.id, area.judges)) {
       const url = `${origin}/juez/${row.code}`;
       judgeLinks.push({
@@ -183,20 +184,22 @@ export default async function QuickMatchPage({ searchParams }: PageProps<"/panel
               </div>
               <SubmitButton className="btn">Guardar</SubmitButton>
             </form>
-            <form action={regenerateMesaCode}>
-              <input type="hidden" name="tournamentId" value={tournament.id} />
-              <SubmitButton
-                className="btn"
-                confirm="El código de mesa actual deja de funcionar. ¿Generar uno nuevo?"
-              >
-                Nuevo código de mesa
-              </SubmitButton>
-            </form>
+            {!DESKTOP && (
+              <form action={regenerateMesaCode}>
+                <input type="hidden" name="tournamentId" value={tournament.id} />
+                <SubmitButton
+                  className="btn"
+                  confirm="El código de mesa actual deja de funcionar. ¿Generar uno nuevo?"
+                >
+                  Nuevo código de mesa
+                </SubmitButton>
+              </form>
+            )}
           </div>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {links.map((link) => (
-            <AccessCard key={link.id} link={link} />
+            <AccessCard key={link.id} link={link} desktop={DESKTOP} />
           ))}
         </div>
         {judgeLinks.length > 0 ? (
@@ -212,7 +215,9 @@ export default async function QuickMatchPage({ searchParams }: PageProps<"/panel
           </>
         ) : (
           <p className="mt-4 text-sm text-slate-500">
-            Cuando haya un combate de kickboxing en la mesa, acá aparecen los códigos y QR de sus jueces.
+            {DESKTOP
+              ? "En kickboxing los jueces puntúan con controles inalámbricos. Se asignan desde la mesa, en la pestaña Controles."
+              : "Cuando haya un combate de kickboxing en la mesa, acá aparecen los códigos y QR de sus jueces."}
           </p>
         )}
       </section>

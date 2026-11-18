@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireOrganizer } from "@/lib/auth";
+import { DESKTOP } from "@/lib/desktop";
 import { Notice } from "@/components/bits";
 import { SubmitButton } from "@/components/ui";
 import {
@@ -113,7 +114,7 @@ export default async function TournamentSummary({
             Peleas jugadas: <strong className="text-slate-800">{played}</strong> de {total}
           </p>
 
-          <div className="card mt-8">
+          <div className={DESKTOP ? "hidden" : "card mt-8"}>
             <h2 className="font-semibold">Organizadores del torneo</h2>
             <p className="mt-1 text-sm text-slate-500">
               Dueño: <strong className="text-slate-800">{t.org.name}</strong>. Además del dueño, estas
@@ -218,7 +219,7 @@ export default async function TournamentSummary({
               </label>
               <input id="location" name="location" defaultValue={t.location ?? ""} className="input" />
             </div>
-            <label className="flex items-center gap-2 text-sm">
+            <label className={DESKTOP ? "hidden" : "flex items-center gap-2 text-sm"}>
               <input type="checkbox" name="published" defaultChecked={t.published} />
               Mostrar en el listado público de torneos
             </label>

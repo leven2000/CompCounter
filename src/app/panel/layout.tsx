@@ -5,6 +5,7 @@ import { leaveOrganization } from "@/app/admin/actions";
 import { db } from "@/lib/db";
 import { requireOrganizer } from "@/lib/auth";
 import { brandSelect, toBrand } from "@/lib/brand";
+import { DESKTOP } from "@/lib/desktop";
 import { BrandLogo } from "@/components/bits";
 import { NavLink } from "@/components/nav";
 
@@ -38,15 +39,17 @@ async function PanelHeader() {
               <NavLink href="/panel/combate">Combate suelto</NavLink>
               <NavLink href="/panel/historial">Historial</NavLink>
               <NavLink href="/panel/apariencia">Apariencia</NavLink>
-              <NavLink href="/panel/cuenta">Cuenta</NavLink>
+              {!DESKTOP && <NavLink href="/panel/cuenta">Cuenta</NavLink>}
             </nav>
           </div>
-          <div className="flex items-center gap-3 text-sm text-slate-500">
-            <span className="hidden sm:inline">{user.name}</span>
-            <form action={logout}>
-              <button className="btn btn-sm">Salir</button>
-            </form>
-          </div>
+          {!DESKTOP && (
+            <div className="flex items-center gap-3 text-sm text-slate-500">
+              <span className="hidden sm:inline">{user.name}</span>
+              <form action={logout}>
+                <button className="btn btn-sm">Salir</button>
+              </form>
+            </div>
+          )}
         </div>
       </header>
     </>

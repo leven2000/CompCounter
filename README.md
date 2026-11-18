@@ -163,7 +163,7 @@ Cada push a `main` y cada pull request corren en GitHub Actions ([`.github/workf
 
 1. Aplica todas las migraciones desde cero sobre un Postgres efímero.
 2. Controla que el esquema no haya cambiado sin su migración.
-3. Corre lint, las pruebas de puntaje y sanciones, las de la carga desde Excel, el chequeo de tipos y el build.
+3. Corre lint, las pruebas de puntaje y sanciones, las de la carga desde Excel, las de los controles de jueces, el chequeo de tipos y el build.
 
 Railway despliega solo cada commit que llega a `main`. Con la opción **Wait for CI** del servicio (Settings → Source), espera a que el CI termine y saltea el despliegue si falla.
 
@@ -188,6 +188,28 @@ En Participantes → Subir planilla se carga un Excel (.xlsx) o un CSV con una f
 - El archivo se lee en el navegador. Los Excel de formato viejo (.xls) hay que guardarlos como .xlsx.
 
 La planilla modelo se regenera con `npm run plantilla`.
+
+## Versión de escritorio (Windows, sin internet)
+
+La carpeta [`desktop/`](desktop) empaqueta la misma aplicación como un programa de Windows que no necesita internet ni cuenta: trae su propia base de datos y abre directo en el panel.
+
+- **Base propia:** un PostgreSQL embebido que solo escucha en la computadora. Los datos quedan en `%APPDATA%\CompCounter` (menú Archivo → Abrir la carpeta de datos).
+- **Ventanas:** la mesa, cada TV, la cartelera y la página pública se abren en su propia ventana. Si hay un televisor o proyector conectado, las pantallas se abren ahí en pantalla completa. F11 entra y sale de pantalla completa.
+- **Jueces con controles:** en lugar del celular, cada juez usa un control inalámbrico tipo Xbox. En la mesa, pestaña Controles, se asigna un control a cada juez y se eligen los botones para sumar y restar a cada esquina. El control vibra cuando el punto quedó registrado.
+
+Límites: Windows reconoce hasta 4 controles de este tipo a la vez; la asignación se hace de nuevo cada vez que se abre el programa; el instalador no está firmado, así que Windows muestra una advertencia al ejecutarlo; no hay actualización automática ni copia de seguridad.
+
+Para generar el instalador, con la base de desarrollo levantada (`npm run db`):
+
+```bash
+npm --prefix desktop install
+```
+
+```bash
+npm --prefix desktop run dist
+```
+
+Queda en `desktop/dist/`. Si npm no corre los scripts de instalación, el binario de Electron se baja con `node desktop/node_modules/electron/install.js`. La lógica de los controles se prueba con `npm run probar:controles`.
 
 ## Modalidades incluidas
 

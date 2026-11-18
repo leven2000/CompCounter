@@ -1,0 +1,76 @@
+{
+  "name": "compcounter-desktop",
+  "productName": "CompCounter",
+  "version": "0.1.0",
+  "description": "CompCounter para Windows, sin internet",
+  "author": "CompCounter",
+  "private": true,
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "server": "node scripts/build-server.mjs",
+    "start": "electron .",
+    "pack": "node scripts/build-server.mjs && electron-builder --win --x64 --dir",
+    "dist": "node scripts/build-server.mjs && electron-builder --win --x64",
+    "icon": "electron scripts/make-icon.mjs"
+  },
+  "dependencies": {
+    "koffi": "3.3.6",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@embedded-postgres/windows-x64": "18.6.0-beta.19",
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "build": {
+    "appId": "app.compcounter.desktop",
+    "productName": "CompCounter",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.cjs",
+      "lib/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "app-server",
+        "to": "app-server"
+      },
+      {
+        "from": "node_modules/@embedded-postgres/windows-x64/native",
+        "to": "pg",
+        "filter": [
+          "bin/**",
+          "lib/**",
+          "share/**",
+          "!bin/wx*.dll",
+          "!bin/testplug.dll",
+          "!bin/libecpg*.dll",
+          "!bin/libpgtypes.dll"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "CompCounter",
+      "artifactName": "CompCounter-Instalador-${version}.exe"
+    },
+    "afterPack": "scripts/after-pack.cjs"
+  }
+}

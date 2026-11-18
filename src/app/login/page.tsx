@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { login } from "@/app/actions";
 import { currentUser } from "@/lib/auth";
 import { APP_NAME } from "@/lib/brand";
+import { DESKTOP } from "@/lib/desktop";
 import { Notice } from "@/components/bits";
 import { SubmitButton } from "@/components/ui";
 
@@ -10,6 +11,15 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const sp = await searchParams;
   const user = await currentUser();
   if (user) redirect(user.role === "SUPERADMIN" ? "/admin" : "/panel");
+  if (DESKTOP) {
+    return (
+      <main className="flex flex-1 items-center justify-center px-6 py-16">
+        <p className="max-w-sm text-center text-slate-600">
+          La sesión local no está activa. Cerrá {APP_NAME} y volvé a abrirlo.
+        </p>
+      </main>
+    );
+  }
 
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">

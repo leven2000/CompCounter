@@ -12,6 +12,7 @@
     "lint": "eslint",
     "probar:puntaje": "node scripts/probar-puntaje.mjs",
     "probar:importacion": "node scripts/probar-importacion.mjs",
+    "probar:controles": "node scripts/probar-controles.mjs",
     "plantilla": "node scripts/crear-plantilla.mjs"
   },
   "dependencies": {

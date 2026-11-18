@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { SignJWT, jwtVerify } from 'jose'
 import bcrypt from 'bcryptjs'
 import { db } from './db'
+import { DESKTOP } from './desktop'
 
 const COOKIE = 'session'
 const WEEK = 60 * 60 * 24 * 7
@@ -35,7 +36,7 @@ export async function startSession(userId: string) {
   jar.set(COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production' && !DESKTOP,
     path: '/',
     maxAge: WEEK,
   })
@@ -82,7 +83,7 @@ export async function setActingOrg(orgId: string | null) {
   jar.set(ACTING, orgId, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production' && !DESKTOP,
     path: '/',
     maxAge: WEEK,
   })

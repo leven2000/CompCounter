@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ensureMesaCode } from "@/lib/access";
 import { requireOrganizer } from "@/lib/auth";
 import { boardLink, mesaLink, overviewLink, tvLink } from "@/lib/access-links";
+import { DESKTOP } from "@/lib/desktop";
 import { baseUrl } from "@/lib/server-url";
 import { AccessCard } from "@/components/AccessCard";
 import { Notice } from "@/components/bits";
@@ -39,30 +40,33 @@ export default async function AreasPage({
           <div className="max-w-2xl">
             <h2 className="font-semibold">Mesa del torneo</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Un solo código para todo el torneo. Quien lo tenga puede llamar peleas, manejar el reloj,
-              cargar puntos y sanciones, declarar el ganador, y ver llaves, competidores y pantallas. Si
-              hay varias áreas, cada operador elige la suya al entrar.
+              {DESKTOP
+                ? "Desde la mesa se llaman las peleas, se maneja el reloj, se cargan puntos y sanciones y se declara el ganador. La mesa y cada pantalla se abren en su propia ventana."
+                : "Un solo código para todo el torneo. Quien lo tenga puede llamar peleas, manejar el reloj, cargar puntos y sanciones, declarar el ganador, y ver llaves, competidores y pantallas. Si hay varias áreas, cada operador elige la suya al entrar."}
             </p>
           </div>
-          <form action={regenerateMesaCode}>
-            <input type="hidden" name="tournamentId" value={t.id} />
-            <SubmitButton
-              className="btn btn-sm"
-              confirm="El código de mesa actual deja de funcionar para todos. ¿Generar uno nuevo?"
-            >
-              Nuevo código de mesa
-            </SubmitButton>
-          </form>
+          {!DESKTOP && (
+            <form action={regenerateMesaCode}>
+              <input type="hidden" name="tournamentId" value={t.id} />
+              <SubmitButton
+                className="btn btn-sm"
+                confirm="El código de mesa actual deja de funcionar para todos. ¿Generar uno nuevo?"
+              >
+                Nuevo código de mesa
+              </SubmitButton>
+            </form>
+          )}
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <AccessCard link={mesaLink(origin, mesaCode)} />
-          <AccessCard link={boardLink(origin, t.slug)} />
-          <AccessCard link={overviewLink(origin, t.slug)} />
+          <AccessCard link={mesaLink(origin, mesaCode)} desktop={DESKTOP} />
+          <AccessCard link={boardLink(origin, t.slug)} desktop={DESKTOP} />
+          <AccessCard link={overviewLink(origin, t.slug)} desktop={DESKTOP} />
         </div>
         <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-          <strong>Jueces:</strong> solo existen en las peleas de kickboxing con tarjetas (ring y light
-          contact). Los códigos se generan para cada pelea cuando la mesa la llama, aparecen en la pantalla
-          de la mesa con su QR y dejan de servir cuando la pelea termina.
+          <strong>Jueces:</strong>{" "}
+          {DESKTOP
+            ? "solo existen en las peleas de kickboxing con tarjetas (ring y light contact). Puntúan con controles inalámbricos, que se asignan desde la mesa, en la pestaña Controles."
+            : "solo existen en las peleas de kickboxing con tarjetas (ring y light contact). Los códigos se generan para cada pelea cuando la mesa la llama, aparecen en la pantalla de la mesa con su QR y dejan de servir cuando la pelea termina."}
         </p>
       </section>
 
@@ -131,7 +135,7 @@ export default async function AreasPage({
                 : area.categories.map((c) => c.name).join(" · ")}
             </p>
             <div className="mt-4 max-w-md">
-              <AccessCard link={tvLink(origin, area.id, area.name)} />
+              <AccessCard link={tvLink(origin, area.id, area.name)} desktop={DESKTOP} />
             </div>
           </section>
         ))}

@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { brandStyle, type Brand } from "@/lib/brand";
 import type { MatchView, QueueItem } from "@/lib/live";
 import { EVENT_LABEL, MINUS_MODE_OPTIONS } from "@/lib/labels";
 import { formatClock, sanctionsSummary, type Corner } from "@/lib/rules";
 import { Flag } from "@/components/bits";
+import { useControllers } from "./useControllers";
 import { act, phaseLabel, useLive, usePhaseBeep, useRemaining } from "./useLive";
 
 type Send = (body: Record<string, unknown>) => void;
@@ -321,12 +323,15 @@ export function MesaConsole({
   areaId,
   code,
   initialBrand,
+  desktop = false,
 }: {
   areaId: string;
   code: string;
   initialBrand: Brand;
+  desktop?: boolean;
 }) {
   const { snap, offset, online } = useLive(areaId, code);
+  const controllers = useControllers();
   const [error, setError] = useState<string | null>(null);
   const [method, setMethod] = useState<string | null>(null);
   const [extra, setExtra] = useState("1:00");
@@ -344,7 +349,7 @@ export function MesaConsole({
   const judgeCount = snap?.area.judges ?? 0;
 
   useEffect(() => {
-    if (!matchId || !usesJudges) return;
+    if (!matchId || !usesJudges || desktop) return;
     let alive = true;
     const query = `code=${encodeURIComponent(code)}&areaId=${encodeURIComponent(areaId)}`;
     void fetch(`/api/mesa/judges?${query}`)
@@ -356,7 +361,7 @@ export function MesaConsole({
     return () => {
       alive = false;
     };
-  }, [matchId, usesJudges, judgeCount, code, areaId]);
+  }, [matchId, usesJudges, judgeCount, code, areaId, desktop]);
 
   const judgeCodes = codes.matchId === matchId ? codes.judges : [];
 
@@ -541,7 +546,17 @@ export function MesaConsole({
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {match.judges.map((j) => {
-                        const connected = snap.presence.judges.includes(j.seat);
+                        const pad = controllers?.slots.find((s) => s.areaId === areaId && s.seat === j.seat);
+                        const connected = desktop
+                          ? !!pad && pad.connected && !pad.suspect
+                          : snap.presence.judges.includes(j.seat);
+                        const offline = !desktop
+                          ? "sin conexión"
+                          : !pad
+                            ? "sin control"
+                            : pad.suspect
+                              ? "verificar control"
+                              : "control apagado";
                         const fix = (corner: Corner, value: number) =>
                           send({ action: "event", type: "JUDGE", judge: j.seat, corner, value });
                         return (
@@ -557,7 +572,10 @@ export function MesaConsole({
                                     {judgeCodes.find((c) => c.seat === j.seat)?.code}
                                   </span>
                                 )}
-                                {!connected && <span className="text-xs font-normal text-red-600">sin conexión</span>}
+                                {desktop && connected && pad && (
+                                  <span className="text-xs font-normal text-slate-500">control {pad.slot + 1}</span>
+                                )}
+                                {!connected && <span className="text-xs font-normal text-red-600">{offline}</span>}
                               </span>
                             </td>
                             {(["RED", "BLUE"] as Corner[]).map((corner) => (
@@ -593,6 +611,14 @@ export function MesaConsole({
                     </tbody>
                   </table>
                 </div>
+                {desktop && (
+                  <p className="mt-3 text-sm text-slate-600">
+                    Los jueces puntúan con sus controles.{" "}
+                    <Link href={`/mesa/${code}/controles`} className="font-medium text-brand underline">
+                      Asignar o revisar controles
+                    </Link>
+                  </p>
+                )}
                 {judgeCodes.length > 0 && (
                   <details className="mt-3" open={match.phase === "IDLE"}>
                     <summary className="text-sm font-medium text-slate-600">
