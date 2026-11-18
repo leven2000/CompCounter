@@ -570,6 +570,8 @@ export async function importSheet(_previous: ImportState, formData: FormData): P
   );
 }
 
+const forced = (formData: FormData) => formData.get("force") === "1";
+
 const pickedFormat = (formData: FormData) => {
   const format = str(formData, "format");
   return FORMATS.includes(format) ? format : "AUTO";
@@ -600,16 +602,18 @@ export async function generateOne(formData: FormData) {
     where: { id: c.id },
     data: { format: pickedFormat(formData), thirdPlaceMatch: formData.get("thirdPlaceMatch") === "on" },
   });
-  const result = await generateBracket(c.id);
+  const result = await generateBracket(c.id, undefined, forced(formData));
   if (!result.ok) go(path, "error", result.error);
+  if (c.areaId) void publish(c.areaId);
   go(path, "ok", result.ok && result.matches ? `Llave generada: ${result.matches} peleas` : "Sin peleas: hace falta más de un inscripto");
 }
 
 export async function clearOne(formData: FormData) {
   const c = await ownCategory(str(formData, "categoryId"));
   const path = `/panel/torneos/${c.tournamentId}/llaves?c=${c.id}`;
-  const result = await clearBracket(c.id);
+  const result = await clearBracket(c.id, forced(formData));
   if (!result.ok) go(path, "error", result.error);
+  if (c.areaId) void publish(c.areaId);
   go(path, "ok", "Llave borrada");
 }
 
@@ -621,7 +625,7 @@ export async function buildBracket(formData: FormData) {
   const entries = await db.entry.findMany({ where: { categoryId: c.id }, select: { id: true } });
   const problem = checkLeaves(leaves, entries.map((e) => e.id));
   if (problem) go(path, "error", problem);
-  const result = await generateBracket(c.id, leaves);
+  const result = await generateBracket(c.id, leaves, forced(formData));
   if (!result.ok) go(path, "error", result.error);
   if (c.areaId) void publish(c.areaId);
   const left = entries.length - leaves.filter(Boolean).length;

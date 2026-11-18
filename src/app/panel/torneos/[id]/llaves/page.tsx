@@ -153,6 +153,9 @@ export default async function BracketsPage({
             const playable = c.matches.filter((m) => m.status !== "BYE");
             const played = playable.filter((m) => m.status === "DONE").length;
             const locked = c.matches.some((m) => m.status === "LIVE" || m.status === "DONE");
+            const warning = locked
+              ? "Esta llave ya tiene peleas jugadas o en curso. Si seguís, se borran esos resultados y no se pueden recuperar. "
+              : "";
             const inBracket = new Set(c.matches.flatMap((m) => [m.redEntryId, m.blueEntryId]));
             const outside = c.matches.length > 0 ? c.entries.filter((e) => !inBracket.has(e.id)).length : 0;
             const fullName = (e: (typeof c.entries)[number]) =>
@@ -189,57 +192,59 @@ export default async function BracketsPage({
                 </summary>
 
                 <div className="mt-4 flex flex-wrap items-end gap-2">
-                  {!locked && (
-                    <form action={generateOne} className="flex flex-wrap items-end gap-2">
-                      <input type="hidden" name="categoryId" value={c.id} />
-                      <div>
-                        <label className="label" htmlFor={`f-${c.id}`}>
-                          Formato de esta llave
-                        </label>
-                        <select id={`f-${c.id}`} name="format" defaultValue={c.format} className="input w-56 py-1.5">
-                          <option value="AUTO">El del torneo</option>
-                          <option value="SINGLE">Eliminación directa</option>
-                          <option value="ROUND_ROBIN">Todos contra todos</option>
-                        </select>
-                      </div>
-                      <label className="flex items-center gap-2 pb-2 text-sm">
-                        <input
-                          type="checkbox"
-                          name="thirdPlaceMatch"
-                          defaultChecked={c.thirdPlaceMatch || t.thirdPlaceMatch}
-                          disabled={t.thirdPlaceMatch}
-                        />
-                        3er puesto
+                  <form action={generateOne} className="flex flex-wrap items-end gap-2">
+                    <input type="hidden" name="categoryId" value={c.id} />
+                    {locked && <input type="hidden" name="force" value="1" />}
+                    <div>
+                      <label className="label" htmlFor={`f-${c.id}`}>
+                        Formato de esta llave
                       </label>
-                      <SubmitButton
-                        className="btn btn-sm"
-                        confirm={c.matches.length > 0 ? "¿Volver a sortear esta llave?" : undefined}
-                      >
-                        {c.matches.length > 0 ? "Volver a sortear" : "Generar llave"}
-                      </SubmitButton>
-                    </form>
-                  )}
-                  {c.matches.length > 0 && !locked && (
+                      <select id={`f-${c.id}`} name="format" defaultValue={c.format} className="input w-56 py-1.5">
+                        <option value="AUTO">El del torneo</option>
+                        <option value="SINGLE">Eliminación directa</option>
+                        <option value="ROUND_ROBIN">Todos contra todos</option>
+                      </select>
+                    </div>
+                    <label className="flex items-center gap-2 pb-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="thirdPlaceMatch"
+                        defaultChecked={c.thirdPlaceMatch || t.thirdPlaceMatch}
+                        disabled={t.thirdPlaceMatch}
+                      />
+                      3er puesto
+                    </label>
+                    <SubmitButton
+                      className="btn btn-sm"
+                      confirm={c.matches.length > 0 ? `${warning}¿Volver a sortear esta llave?` : undefined}
+                    >
+                      {c.matches.length > 0 ? "Volver a sortear" : "Generar llave"}
+                    </SubmitButton>
+                  </form>
+                  {c.matches.length > 0 && (
                     <form action={clearOne}>
                       <input type="hidden" name="categoryId" value={c.id} />
-                      <SubmitButton className="btn btn-sm btn-danger" confirm="¿Borrar esta llave?">
+                      {locked && <input type="hidden" name="force" value="1" />}
+                      <SubmitButton className="btn btn-sm btn-danger" confirm={`${warning}¿Borrar esta llave?`}>
                         Borrar llave
                       </SubmitButton>
                     </form>
                   )}
                   {locked && (
-                    <span className="self-center text-xs text-slate-500">
-                      Ya tiene peleas jugadas: no se puede volver a sortear ni armar a mano.
+                    <span className="self-center text-xs text-amber-700">
+                      Ya tiene peleas jugadas o en curso: si la volvés a sortear, la armás a mano o la borrás, se
+                      pierden esos resultados.
                     </span>
                   )}
                 </div>
 
-                {!locked && c.entries.length >= 2 && (
+                {c.entries.length >= 2 && (
                   <details className="mt-3 rounded-lg bg-slate-50 p-3">
                     <summary className="text-sm font-medium">Armar la llave a mano</summary>
                     <form action={buildBracket} className="mt-3">
                       <input type="hidden" name="categoryId" value={c.id} />
                       <input type="hidden" name="size" value={leaves.length} />
+                      {locked && <input type="hidden" name="force" value="1" />}
                       <p className="text-xs text-slate-500">
                         Elegí quién va en cada lugar de la primera ronda. Un solo competidor en una pelea es
                         pase libre. Los ganadores de las peleas 1 y 2 se cruzan, los de la 3 y la 4 también, y
@@ -271,7 +276,7 @@ export default async function BracketsPage({
                       <div className="mt-3">
                         <SubmitButton
                           className="btn btn-sm"
-                          confirm={c.matches.length > 0 ? "¿Reemplazar la llave actual por esta?" : undefined}
+                          confirm={c.matches.length > 0 ? `${warning}¿Reemplazar la llave actual por esta?` : undefined}
                         >
                           Guardar llave a mano
                         </SubmitButton>

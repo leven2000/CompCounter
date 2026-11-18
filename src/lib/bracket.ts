@@ -192,7 +192,11 @@ function roundRobin(categoryId: string, ordered: EntryRow[], roundMs: number): P
   return rows
 }
 
-export async function generateBracket(categoryId: string, manual?: (string | null)[]): Promise<BracketResult> {
+export async function generateBracket(
+  categoryId: string,
+  manual?: (string | null)[],
+  force = false,
+): Promise<BracketResult> {
   const category = await db.category.findUnique({
     where: { id: categoryId },
     include: {
@@ -202,7 +206,7 @@ export async function generateBracket(categoryId: string, manual?: (string | nul
     },
   })
   if (!category) return { ok: false, error: 'Categoría inexistente' }
-  if (category.matches.some((m) => m.status === 'LIVE' || m.status === 'DONE')) {
+  if (!force && category.matches.some((m) => m.status === 'LIVE' || m.status === 'DONE')) {
     return { ok: false, error: 'La llave ya tiene peleas jugadas' }
   }
 
@@ -249,10 +253,12 @@ export async function generateBracket(categoryId: string, manual?: (string | nul
   return { ok: true, matches: playable.length }
 }
 
-export async function clearBracket(categoryId: string): Promise<BracketResult> {
-  const played = await db.match.count({
-    where: { categoryId, status: { in: ['LIVE', 'DONE'] } },
-  })
+export async function clearBracket(categoryId: string, force = false): Promise<BracketResult> {
+  const played = force
+    ? 0
+    : await db.match.count({
+        where: { categoryId, status: { in: ['LIVE', 'DONE'] } },
+      })
   if (played > 0) return { ok: false, error: 'La llave ya tiene peleas jugadas' }
   await db.$transaction([
     db.match.deleteMany({ where: { categoryId } }),
