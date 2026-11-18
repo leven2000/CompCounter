@@ -200,6 +200,9 @@ check('género: con F, la M es masculino', mf.people.map((p) => p.gender), ['Fem
 
 check('datos del navegador: basura no rompe', sanitizeRows([null, 7, { firstName: 5, category: '  A   B  ' }]).map((r) => [r.line, r.firstName, r.category]), [[1, '', ''], [2, '', ''], [3, '', 'A B']])
 check('datos del navegador: si no es una lista, se rechaza', sanitizeRows('x'), null)
+check('datos del navegador: saca caracteres de control', sanitizeRows([{ firstName: 'A\u0000na\u0007 Paz' }])[0].firstName, 'A na Paz')
+const odd = buildPlan(sanitizeRows([{ firstName: 'Ana', discipline: 'Constructor', category: 'A' }]), {}, none)
+check('disciplina con nombre raro: queda sin modalidad, no rompe', odd.disciplines.map((d) => d.ruleset), [''])
 const many = Array.from({ length: 3001 }, (_, i) => ({ firstName: `P${i}` }))
 check('tope de filas', buildPlan(sanitizeRows(many), {}, none).blockers.length, 1)
 check('sin nombres no hay nada que importar', buildPlan(sanitizeRows([{ category: 'A' }]), {}, none).blockers, ['No encontré ningún competidor. Revisá qué columna tiene el nombre.'])

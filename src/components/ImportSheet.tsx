@@ -59,14 +59,14 @@ export function ImportSheet({
 
   const sheet = file?.sheets[sheetIndex] ?? null;
   const rows = useMemo(
-    () => (sheet ? extractRows(sheet.rows, layout.headerRow, layout.mapping) : []),
+    () => (sheet ? (sanitizeRows(extractRows(sheet.rows, layout.headerRow, layout.mapping)) ?? []) : []),
     [sheet, layout],
   );
   const plan = useMemo(() => buildPlan(rows, choices, existing), [rows, choices, existing]);
   const payload = useMemo(
     () =>
       JSON.stringify({
-        rows: sanitizeRows(rows),
+        rows,
         choices: Object.fromEntries(plan.disciplines.map((d) => [d.key, d.ruleset])),
         areaId,
         country,

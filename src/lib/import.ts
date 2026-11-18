@@ -241,7 +241,10 @@ export function extractRows(rows: string[][], headerRow: number, mapping: Mappin
 
 export function sanitizeRows(input: unknown): RawRow[] | null {
   if (!Array.isArray(input)) return null
-  const text = (value: unknown) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, 200) : '')
+  const printable = (value: string) =>
+    Array.from(value, (ch) => (ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 127 ? ' ' : ch)).join('')
+  const text = (value: unknown) =>
+    typeof value === 'string' ? printable(value).replace(/\s+/g, ' ').trim().slice(0, 200) : ''
   return input.map((item, index) => {
     const source = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>
     return {
@@ -467,7 +470,7 @@ export function buildPlan(rows: RawRow[], choices: Record<string, string>, exist
         key: disciplineKey,
         label,
         rows: 0,
-        ruleset: choices[disciplineKey] || guessRuleset(label),
+        ruleset: (typeof choices[disciplineKey] === 'string' && choices[disciplineKey]) || guessRuleset(label),
         needed: false,
       }
       disciplines.set(disciplineKey, discipline)

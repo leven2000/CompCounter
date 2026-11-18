@@ -484,73 +484,78 @@ export async function importSheet(_previous: ImportState, formData: FormData): P
   const newPeople = plan.people.filter((p) => !p.existingId);
   let entries = 0;
 
-  await db.$transaction(
-    async (tx) => {
-      const last = await tx.category.aggregate({ where: { tournamentId: t.id }, _max: { order: true } });
-      let order = last._max.order ?? 0;
-      const categoryIds = new Map<string, string>();
-      for (const c of plan.categories) if (c.existingId) categoryIds.set(c.key, c.existingId);
-      for (const group of chunk(newCategories, 200)) {
-        const created = await tx.category.createManyAndReturn({
-          data: group.map((c) => {
-            const rules = getRuleset(c.ruleset);
-            return {
-              tournamentId: t.id,
-              name: c.name,
-              ruleset: rules.id,
-              gender: c.gender,
-              weightMin: c.weightMin,
-              weightMax: c.weightMax,
-              rounds: rules.rounds,
-              roundSeconds: rules.roundSeconds,
-              restSeconds: rules.restSeconds,
-              areaId: area?.id ?? null,
-              order: ++order,
-            };
-          }),
-          select: { id: true, name: true },
-        });
-        const byName = new Map(created.map((row) => [row.name, row.id]));
-        for (const c of group) {
-          const id = byName.get(c.name);
-          if (id) categoryIds.set(c.key, id);
+  try {
+    await db.$transaction(
+      async (tx) => {
+        const last = await tx.category.aggregate({ where: { tournamentId: t.id }, _max: { order: true } });
+        let order = last._max.order ?? 0;
+        const categoryIds = new Map<string, string>();
+        for (const c of plan.categories) if (c.existingId) categoryIds.set(c.key, c.existingId);
+        for (const group of chunk(newCategories, 200)) {
+          const created = await tx.category.createManyAndReturn({
+            data: group.map((c) => {
+              const rules = getRuleset(c.ruleset);
+              return {
+                tournamentId: t.id,
+                name: c.name,
+                ruleset: rules.id,
+                gender: c.gender,
+                weightMin: c.weightMin,
+                weightMax: c.weightMax,
+                rounds: rules.rounds,
+                roundSeconds: rules.roundSeconds,
+                restSeconds: rules.restSeconds,
+                areaId: area?.id ?? null,
+                order: ++order,
+              };
+            }),
+            select: { id: true, name: true },
+          });
+          const byName = new Map(created.map((row) => [row.name, row.id]));
+          for (const c of group) {
+            const id = byName.get(c.name);
+            if (id) categoryIds.set(c.key, id);
+          }
         }
-      }
 
-      const personIds = new Map<string, string>();
-      for (const p of plan.people) if (p.existingId) personIds.set(p.key, p.existingId);
-      for (const group of chunk(newPeople, 200)) {
-        const created = await tx.participant.createManyAndReturn({
-          data: group.map((p) => ({
-            tournamentId: t.id,
-            firstName: p.firstName,
-            lastName: p.lastName,
-            team: p.team,
-            country: findCountry(p.country) ?? fallbackCountry,
-            gender: p.gender,
-            birthYear: p.birthYear,
-            level: p.level,
-            weight: p.weight,
-          })),
-          select: { id: true, firstName: true, lastName: true, team: true },
-        });
-        for (const row of created) personIds.set(personKey(row.firstName, row.lastName, row.team ?? ""), row.id);
-      }
+        const personIds = new Map<string, string>();
+        for (const p of plan.people) if (p.existingId) personIds.set(p.key, p.existingId);
+        for (const group of chunk(newPeople, 200)) {
+          const created = await tx.participant.createManyAndReturn({
+            data: group.map((p) => ({
+              tournamentId: t.id,
+              firstName: p.firstName,
+              lastName: p.lastName,
+              team: p.team,
+              country: findCountry(p.country) ?? fallbackCountry,
+              gender: p.gender,
+              birthYear: p.birthYear,
+              level: p.level,
+              weight: p.weight,
+            })),
+            select: { id: true, firstName: true, lastName: true, team: true },
+          });
+          for (const row of created) personIds.set(personKey(row.firstName, row.lastName, row.team ?? ""), row.id);
+        }
 
-      const pairs = plan.people.flatMap((p) =>
-        p.categoryKeys.flatMap((key) => {
-          const participantId = personIds.get(p.key);
-          const categoryId = categoryIds.get(key);
-          return participantId && categoryId ? [{ participantId, categoryId }] : [];
-        }),
-      );
-      for (const group of chunk(pairs, 1000)) {
-        const result = await tx.entry.createMany({ data: group, skipDuplicates: true });
-        entries += result.count;
-      }
-    },
-    { timeout: 30_000, maxWait: 10_000 },
-  );
+        const pairs = plan.people.flatMap((p) =>
+          p.categoryKeys.flatMap((key) => {
+            const participantId = personIds.get(p.key);
+            const categoryId = categoryIds.get(key);
+            return participantId && categoryId ? [{ participantId, categoryId }] : [];
+          }),
+        );
+        for (const group of chunk(pairs, 1000)) {
+          const result = await tx.entry.createMany({ data: group, skipDuplicates: true });
+          entries += result.count;
+        }
+      },
+      { timeout: 30_000, maxWait: 10_000 },
+    );
+  } catch (error) {
+    console.error("importSheet", error);
+    return { error: "No se pudo guardar la planilla. No se cargó nada: probá de nuevo." };
+  }
 
   const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   const known = plan.stats.knownPeople;
