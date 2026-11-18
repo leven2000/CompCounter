@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import { appendFileSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createBackups } from './lib/backups.js'
 import { loadConfig } from './lib/config.js'
 import { startControllers } from './lib/controllers.js'
 import { startDatabase } from './lib/database.js'
@@ -11,7 +12,10 @@ import { createWindows } from './lib/windows.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
-if (process.env.COMPCOUNTER_DATA_DIR) app.setPath('userData', process.env.COMPCOUNTER_DATA_DIR)
+if (process.env.COMPCOUNTER_DATA_DIR) {
+  app.setPath('userData', process.env.COMPCOUNTER_DATA_DIR)
+  app.setPath('documents', join(process.env.COMPCOUNTER_DATA_DIR, 'documentos'))
+}
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
 const dataDir = app.getPath('userData')
@@ -54,7 +58,24 @@ async function start() {
     throw new Error('Falta la aplicación compilada (app-server). Corré "npm run server" en la carpeta desktop.')
   }
 
-  const database = await startDatabase({
+  let database = null
+  let server = null
+  let serverStopped = false
+  const backups = createBackups({
+    config,
+    save,
+    log,
+    connect: () => database.connect(),
+    async stopServer() {
+      if (!server || serverStopped) return
+      serverStopped = true
+      const exited = new Promise((resolve) => server.child.once('exit', resolve))
+      server.stop()
+      await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 5000))])
+    },
+  })
+
+  database = await startDatabase({
     binDir: app.isPackaged
       ? join(process.resourcesPath, 'pg', 'bin')
       : join(here, 'node_modules', '@embedded-postgres', 'windows-x64', 'native', 'bin'),
@@ -62,13 +83,14 @@ async function start() {
     password: config.dbPassword,
     migrationsDir: join(serverDir, 'migrations'),
     log,
+    beforeUpgrade: (client) => backups.beforeUpgrade(client),
   })
   cleanup = async () => {
     await database.stop()
   }
 
   const key = randomBytes(32).toString('hex')
-  const server = await startServer({
+  server = await startServer({
     dir: serverDir,
     log,
     env: {
@@ -113,8 +135,20 @@ async function start() {
   })
   cleanup = async () => {
     controllers.stop()
+    serverStopped = true
     server.stop()
+    await backups.stop()
     await database.stop()
+  }
+  void backups.start().catch((error) => log(`Copias: ${error?.message ?? error}`))
+  if (!app.isPackaged) {
+    globalThis.compcounterDebug = {
+      backups,
+      relaunch() {
+        app.relaunch()
+        app.quit()
+      },
+    }
   }
 
   const trusted = (event) => {
@@ -139,6 +173,15 @@ async function start() {
   handle('controllers:unassign', (slot) => controllers.unassign(Number(slot)))
   handle('controllers:set-mapping', (mapping) => controllers.setMapping(mapping))
   handle('controllers:identify', (slot) => controllers.identify(Number(slot)))
+  const windowOf = (event) => BrowserWindow.fromWebContents(event.sender) ?? undefined
+  const handleWindow = (channel, fn) =>
+    ipcMain.handle(channel, (event) => (trusted(event) ? fn(windowOf(event)) : null))
+  handle('backup:status', () => backups.status())
+  handle('backup:now', () => backups.now())
+  handle('backup:default-folder', () => backups.defaultFolder())
+  handle('backup:open-folder', () => backups.openFolder())
+  handleWindow('backup:choose-folder', (window) => backups.chooseFolder(window))
+  handleWindow('backup:restore', (window) => backups.restore(window))
   ipcMain.on('controllers:subscribe', (event) => {
     if (!trusted(event) || subscribers.has(event.sender)) return
     const contents = event.sender
@@ -156,7 +199,12 @@ async function start() {
     subscribers.delete(event.sender)
   })
 
-  const windows = createWindows(origin)
+  const windows = createWindows(origin, [
+    { label: 'Hacer una copia de seguridad ahora', click: () => void backups.now() },
+    { label: 'Abrir la carpeta de copias', click: () => backups.openFolder() },
+    { label: 'Cambiar la carpeta de copias…', click: (_item, window) => void backups.chooseFolder(window) },
+    { label: 'Restaurar una copia…', click: (_item, window) => void backups.restore(window) },
+  ])
   app.on('second-instance', () => windows.openMain())
   const main = windows.openMain()
   main.once('ready-to-show', () => {
@@ -164,7 +212,7 @@ async function start() {
   })
 
   server.child.once('exit', (code) => {
-    if (quitting) return
+    if (quitting || serverStopped) return
     log(`El servidor terminó solo (código ${code})`)
     dialog.showErrorBox('CompCounter', 'La aplicación se detuvo de forma inesperada. Volvé a abrirla.')
     app.quit()

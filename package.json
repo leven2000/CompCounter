@@ -13,6 +13,7 @@
     "probar:puntaje": "node scripts/probar-puntaje.mjs",
     "probar:importacion": "node scripts/probar-importacion.mjs",
     "probar:controles": "node scripts/probar-controles.mjs",
+    "probar:copias": "node scripts/probar-copias.mjs",
     "plantilla": "node scripts/crear-plantilla.mjs"
   },
   "dependencies": {

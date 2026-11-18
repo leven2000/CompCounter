@@ -1,6 +1,14 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('compcounterDesktop', {
+  backup: {
+    status: () => ipcRenderer.invoke('backup:status'),
+    now: () => ipcRenderer.invoke('backup:now'),
+    chooseFolder: () => ipcRenderer.invoke('backup:choose-folder'),
+    defaultFolder: () => ipcRenderer.invoke('backup:default-folder'),
+    openFolder: () => ipcRenderer.invoke('backup:open-folder'),
+    restore: () => ipcRenderer.invoke('backup:restore'),
+  },
   controllers: {
     get: () => ipcRenderer.invoke('controllers:get'),
     subscribe: (listener) => {

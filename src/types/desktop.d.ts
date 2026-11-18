@@ -14,7 +14,24 @@ export type ControllerState = {
   capture: { type: "assign" | "button"; areaId?: string; seat?: number } | null;
 };
 
+export type BackupStatus = {
+  dir: string;
+  isDefault: boolean;
+  lastAt: number | null;
+  lastFile: string | null;
+  error: string | null;
+  busy: boolean;
+};
+
 export type DesktopBridge = {
+  backup: {
+    status: () => Promise<BackupStatus>;
+    now: () => Promise<BackupStatus>;
+    chooseFolder: () => Promise<BackupStatus>;
+    defaultFolder: () => Promise<BackupStatus>;
+    openFolder: () => Promise<void>;
+    restore: () => Promise<{ ok: boolean; error?: string }>;
+  };
   controllers: {
     get: () => Promise<ControllerState>;
     subscribe: (listener: (state: ControllerState) => void) => () => void;

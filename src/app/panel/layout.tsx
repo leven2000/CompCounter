@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireOrganizer } from "@/lib/auth";
 import { brandSelect, toBrand } from "@/lib/brand";
 import { DESKTOP } from "@/lib/desktop";
+import { BackupBar } from "@/components/BackupBar";
 import { BrandLogo } from "@/components/bits";
 import { NavLink } from "@/components/nav";
 
@@ -63,6 +64,7 @@ export default function PanelLayout({ children }: LayoutProps<"/panel">) {
         <PanelHeader />
       </Suspense>
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">{children}</main>
+      {DESKTOP && <BackupBar />}
     </div>
   );
 }

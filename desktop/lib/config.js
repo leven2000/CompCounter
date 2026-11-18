@@ -23,6 +23,7 @@ export function loadConfig(dir) {
     authSecret: secret(saved.authSecret, 32),
     dbPassword: secret(saved.dbPassword, 24),
     mapping: saved.mapping && typeof saved.mapping === 'object' ? saved.mapping : null,
+    backupDir: typeof saved.backupDir === 'string' && saved.backupDir ? saved.backupDir : null,
   }
   const save = () => {
     const temp = `${file}.tmp`

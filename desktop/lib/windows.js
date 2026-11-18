@@ -14,7 +14,7 @@ const webPreferences = {
 
 const isDisplay = (path) => path.startsWith('/tv/') || path.startsWith('/cartelera/')
 
-export function createWindows(origin) {
+export function createWindows(origin, backupMenu) {
   let main = null
 
   const ours = (url) => {
@@ -120,6 +120,9 @@ export function createWindows(origin) {
         label: 'Archivo',
         submenu: [
           { label: 'Panel principal', accelerator: 'Ctrl+1', click: openMain },
+          { type: 'separator' },
+          ...backupMenu,
+          { type: 'separator' },
           { label: 'Abrir la carpeta de datos', click: () => void shell.openPath(app.getPath('userData')) },
           { type: 'separator' },
           { label: 'Salir', role: 'quit' },

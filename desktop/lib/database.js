@@ -75,7 +75,7 @@ async function waitReady(port, password, child, tail) {
   throw new Error(`La base local no arrancó.\n${tail().slice(-600) || last}`)
 }
 
-async function migrate(client, migrationsDir, log) {
+async function migrate(client, migrationsDir, log, beforeUpgrade) {
   await client.query(`
     CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
       "id" VARCHAR(36) PRIMARY KEY NOT NULL,
@@ -94,8 +94,9 @@ async function migrate(client, migrationsDir, log) {
   const names = readdirSync(migrationsDir)
     .filter((name) => statSync(join(migrationsDir, name)).isDirectory())
     .sort()
-  for (const name of names) {
-    if (applied.has(name)) continue
+  const pending = names.filter((name) => !applied.has(name))
+  if (pending.length > 0 && applied.size > 0 && beforeUpgrade) await beforeUpgrade(client)
+  for (const name of pending) {
     const sql = readFileSync(join(migrationsDir, name, 'migration.sql'), 'utf8')
     log(`Aplicando migración ${name}`)
     await client.query('BEGIN')
@@ -127,7 +128,7 @@ async function ensureLocalUser(client) {
   )
 }
 
-export async function startDatabase({ binDir, dataDir, password, migrationsDir, log }) {
+export async function startDatabase({ binDir, dataDir, password, migrationsDir, log, beforeUpgrade }) {
   const initdb = join(binDir, 'initdb.exe')
   const pg_ctl = join(binDir, 'pg_ctl.exe')
   const postgres = join(binDir, 'postgres.exe')
@@ -171,7 +172,7 @@ export async function startDatabase({ binDir, dataDir, password, migrationsDir, 
 
     const client = await connect(port, password, DATABASE)
     try {
-      await migrate(client, migrationsDir, log)
+      await migrate(client, migrationsDir, log, beforeUpgrade)
       await ensureLocalUser(client)
     } finally {
       await client.end()
@@ -184,6 +185,7 @@ export async function startDatabase({ binDir, dataDir, password, migrationsDir, 
   return {
     url: `postgresql://${USER}:${password}@127.0.0.1:${port}/${DATABASE}`,
     userId: LOCAL_USER,
+    connect: () => connect(port, password, DATABASE),
     stop,
   }
 }

@@ -12,7 +12,8 @@
     "start": "electron .",
     "pack": "node scripts/build-server.mjs && electron-builder --win --x64 --dir",
     "dist": "node scripts/build-server.mjs && electron-builder --win --x64",
-    "icon": "electron scripts/make-icon.mjs"
+    "icon": "electron scripts/make-icon.mjs",
+    "probar:copias": "node scripts/probar-copias.mjs"
   },
   "dependencies": {
     "koffi": "3.3.6",

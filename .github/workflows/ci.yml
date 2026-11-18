@@ -73,6 +73,9 @@ jobs:
       - name: Pruebas de los controles de jueces
         run: npm run probar:controles
 
+      - name: Pruebas de las copias de seguridad
+        run: npm run probar:copias
+
       - name: Generar los tipos de rutas
         run: npx next typegen
 
