@@ -1,7 +1,7 @@
 {
   "name": "compcounter-desktop",
   "productName": "CompCounter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "CompCounter para Windows, sin internet",
   "author": "CompCounter",
   "private": true,
