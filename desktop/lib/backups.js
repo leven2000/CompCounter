@@ -1,6 +1,6 @@
 import { app, dialog, shell } from 'electron'
 import { accessSync, constants, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, parse, resolve } from 'node:path'
 import { changeCounter, createBackup, inspectBackup, restoreBackup } from './backup.js'
 import { expired, EXTENSION, fileName, overBudget } from './backup-core.js'
 
@@ -20,7 +20,13 @@ export function createBackups({ connect, config, save, log, stopServer }) {
   let queue = Promise.resolve()
 
   const folder = () => config.backupDir || fallback
-  const status = () => ({ dir: folder(), isDefault: !config.backupDir, ...state })
+  const disk = (path) => parse(resolve(path)).root.toLowerCase()
+  const status = () => ({
+    dir: folder(),
+    isDefault: !config.backupDir,
+    sameDisk: disk(folder()) === disk(app.getPath('userData')),
+    ...state,
+  })
 
   const usable = (dir) => {
     try {

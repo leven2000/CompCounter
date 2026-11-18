@@ -55,6 +55,11 @@ export function BackupBar() {
         <span className="min-w-0 truncate" title={status.dir}>
           Carpeta: {status.dir}
         </span>
+        {status.sameDisk && (
+          <span className="text-amber-700">
+            Está en el mismo disco que los datos: para estar cubierto si el disco falla, elegí un pendrive u otro disco.
+          </span>
+        )}
         {status.error && <span className="font-medium text-red-700">{status.error}</span>}
         <span className="ml-auto flex flex-wrap gap-2">
           <button type="button" className="btn btn-sm" onClick={() => void api.now().then(apply)}>

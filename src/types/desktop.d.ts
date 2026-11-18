@@ -17,6 +17,7 @@ export type ControllerState = {
 export type BackupStatus = {
   dir: string;
   isDefault: boolean;
+  sameDisk: boolean;
   lastAt: number | null;
   lastFile: string | null;
   error: string | null;
