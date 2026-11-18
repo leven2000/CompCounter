@@ -58,6 +58,7 @@ No hay nada que instalar: todo funciona en el navegador, incluidos el pad de los
 - Competidores con academia, país, foto, pesaje y aviso cuando alguien queda fuera de peso.
 - Carga de inscriptos desde un Excel o CSV: crea competidores, categorías y escuelas, muestra qué va a cargar antes de guardar y no duplica al volver a subir.
 - Llaves de eliminación simple y de todos contra todos, que separan a los compañeros de academia y respetan cabezas de serie.
+- El formato se elige en la pantalla de Llaves, para todo el torneo o llave por llave; también se puede armar una llave a mano y fusionar dos categorías de la misma disciplina.
 - Horarios calculados por área según la duración de cada categoría.
 - Combates sueltos sin torneo ni llave, para exhibiciones o peleas estelares.
 - Torneo demo completo con un botón, para mostrar el sistema.

@@ -7,15 +7,18 @@ export function SubmitButton({
   children,
   className = "btn btn-primary",
   confirm,
+  formAction,
 }: {
   children: ReactNode;
   className?: string;
   confirm?: string;
+  formAction?: (formData: FormData) => void | Promise<void>;
 }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
+      formAction={formAction}
       className={className}
       disabled={pending}
       onClick={(e) => {

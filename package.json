@@ -14,6 +14,7 @@
     "probar:importacion": "node scripts/probar-importacion.mjs",
     "probar:controles": "node scripts/probar-controles.mjs",
     "probar:copias": "node scripts/probar-copias.mjs",
+    "probar:llaves": "node scripts/probar-llaves.mjs",
     "plantilla": "node scripts/crear-plantilla.mjs"
   },
   "dependencies": {

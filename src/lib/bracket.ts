@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { Prisma } from '@prisma/client'
 import { db } from './db'
+import { pickFormat } from './bracket-core'
 
 type EntryRow = { id: string; seed: number | null; participant: { team: string | null } }
 
@@ -87,14 +88,13 @@ function placeEntries(entries: EntryRow[], totalRounds: number) {
 
 function singleElimination(
   categoryId: string,
-  entries: EntryRow[],
+  leaves: (string | null)[],
   roundMs: number,
   thirdPlace: boolean,
 ): Prisma.MatchCreateManyInput[] {
-  const n = entries.length
-  const totalRounds = Math.ceil(Math.log2(n))
-  const size = 2 ** totalRounds
-  const leaves = placeEntries(entries, totalRounds)
+  const n = leaves.filter(Boolean).length
+  const size = leaves.length
+  const totalRounds = Math.log2(size)
   const slots = Array.from({ length: size / 2 }, (_, p) => [leaves[p * 2], leaves[p * 2 + 1]])
 
   const ids: string[][] = []
@@ -115,8 +115,8 @@ function singleElimination(
         label: roundLabel(depth, r),
         nextMatchId: r < totalRounds ? ids[r + 1][Math.floor(p / 2)] : null,
         nextSlot: r < totalRounds ? (p % 2 === 0 ? 'RED' : 'BLUE') : null,
-        redEntryId: r === 1 ? (slots[p][0]?.id ?? null) : null,
-        blueEntryId: r === 1 ? (slots[p][1]?.id ?? null) : null,
+        redEntryId: r === 1 ? slots[p][0] : null,
+        blueEntryId: r === 1 ? slots[p][1] : null,
         status: 'PENDING',
         clockRemainingMs: roundMs,
       })
@@ -125,8 +125,8 @@ function singleElimination(
 
   for (const id of ids[1]) {
     const row = rows.get(id)!
-    const only = row.redEntryId && !row.blueEntryId ? row.redEntryId : null
-    if (!only) continue
+    if (Boolean(row.redEntryId) === Boolean(row.blueEntryId)) continue
+    const only = row.redEntryId ?? row.blueEntryId
     row.status = 'BYE'
     row.winnerEntryId = only
     row.winMethod = 'Pase libre'
@@ -192,10 +192,11 @@ function roundRobin(categoryId: string, ordered: EntryRow[], roundMs: number): P
   return rows
 }
 
-export async function generateBracket(categoryId: string): Promise<BracketResult> {
+export async function generateBracket(categoryId: string, manual?: (string | null)[]): Promise<BracketResult> {
   const category = await db.category.findUnique({
     where: { id: categoryId },
     include: {
+      tournament: { select: { bracketFormat: true, roundRobinMax: true, thirdPlaceMatch: true } },
       entries: { include: { participant: { select: { team: true } } } },
       matches: { select: { status: true } },
     },
@@ -210,13 +211,18 @@ export async function generateBracket(categoryId: string): Promise<BracketResult
   let rows: Prisma.MatchCreateManyInput[] = []
   let format: string | null = null
 
-  if (n >= 2) {
-    format = category.format === 'AUTO' ? (n <= 3 ? 'ROUND_ROBIN' : 'SINGLE') : category.format
-    if (format === 'ROUND_ROBIN' && n > 8) format = 'SINGLE'
+  const thirdPlace = category.thirdPlaceMatch || category.tournament.thirdPlaceMatch
+  if (manual) {
+    format = 'SINGLE'
+    rows = singleElimination(categoryId, manual, roundMs, thirdPlace)
+  } else if (n >= 2) {
+    format = pickFormat(n, category.format, category.tournament.bracketFormat, category.tournament.roundRobinMax)
+    const leaves = () =>
+      placeEntries(category.entries, Math.ceil(Math.log2(n))).map((entry) => entry?.id ?? null)
     rows =
       format === 'ROUND_ROBIN'
         ? roundRobin(categoryId, orderEntries(category.entries), roundMs)
-        : singleElimination(categoryId, category.entries, roundMs, category.thirdPlaceMatch)
+        : singleElimination(categoryId, leaves(), roundMs, thirdPlace)
   }
 
   const max = await db.match.aggregate({

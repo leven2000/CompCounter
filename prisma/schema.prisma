@@ -57,6 +57,9 @@ model Tournament {
   published    Boolean       @default(true)
   quick        Boolean       @default(false)
   mesaCode     String?       @unique
+  bracketFormat   String     @default("AUTO")
+  roundRobinMax   Int        @default(3)
+  thirdPlaceMatch Boolean    @default(false)
   createdAt    DateTime      @default(now())
   areas        Area[]
   categories   Category[]

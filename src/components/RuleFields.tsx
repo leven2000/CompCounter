@@ -9,8 +9,6 @@ type Values = {
   rounds: number;
   roundSeconds: number;
   restSeconds: number;
-  format: string;
-  thirdPlaceMatch: boolean;
   autoLadder: boolean;
   dqAt: number | null;
   minusMode: string | null;
@@ -56,23 +54,6 @@ export function RuleFields({
           ))}
         </select>
       </div>
-      {full && (
-        <div>
-          <label className="label" htmlFor={id("format")}>
-            Formato de llave
-          </label>
-          <select
-            id={id("format")}
-            name="format"
-            defaultValue={values?.format ?? "AUTO"}
-            className="input"
-          >
-            <option value="AUTO">Automático</option>
-            <option value="SINGLE">Eliminación simple</option>
-            <option value="ROUND_ROBIN">Todos contra todos</option>
-          </select>
-        </div>
-      )}
       {full && (
         <div>
           <label className="label" htmlFor={id("areaId")}>
@@ -133,16 +114,6 @@ export function RuleFields({
         />
       </div>
       <div className="flex flex-col justify-end gap-2 text-sm">
-        {full && (
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="thirdPlaceMatch"
-              defaultChecked={values?.thirdPlaceMatch ?? false}
-            />
-            Pelea por el 3er puesto
-          </label>
-        )}
         <label className="flex items-center gap-2">
           <input
             type="checkbox"

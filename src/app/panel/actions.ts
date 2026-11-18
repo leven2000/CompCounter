@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { hashPassword, requireOrganizer, verifyPassword } from "@/lib/auth";
 import { resetMesaCode } from "@/lib/access";
 import { clearBracket, generateBracket } from "@/lib/bracket";
+import { checkLeaves, FORMATS, mergedName, mergeProblem } from "@/lib/bracket-core";
 import { findCountry } from "@/lib/countries";
 import { publish, tableAction } from "@/lib/live";
 import { createDemo } from "@/lib/demo";
@@ -158,7 +159,6 @@ export async function regenerateMesaCode(formData: FormData) {
 
 async function categoryData(formData: FormData, tournamentId: string) {
   const rules = getRuleset(str(formData, "ruleset"));
-  const format = str(formData, "format");
   const areaId = str(formData, "areaId");
   const area = areaId ? await db.area.findFirst({ where: { id: areaId, tournamentId } }) : null;
   return {
@@ -171,8 +171,6 @@ async function categoryData(formData: FormData, tournamentId: string) {
     rounds: clamp(int(formData, "rounds", rules.rounds), 1, 12),
     roundSeconds: clamp(parseDuration(str(formData, "roundTime"), rules.roundSeconds), 10, 3600),
     restSeconds: clamp(parseDuration(str(formData, "restTime"), rules.restSeconds), 0, 900),
-    format: ["AUTO", "SINGLE", "ROUND_ROBIN"].includes(format) ? format : "AUTO",
-    thirdPlaceMatch: formData.get("thirdPlaceMatch") === "on",
     autoLadder: formData.get("autoLadder") === "on",
     ...readSanctions({
       dqAt: str(formData, "dqAt"),
@@ -572,9 +570,36 @@ export async function importSheet(_previous: ImportState, formData: FormData): P
   );
 }
 
+const pickedFormat = (formData: FormData) => {
+  const format = str(formData, "format");
+  return FORMATS.includes(format) ? format : "AUTO";
+};
+
+async function bracketSettings(formData: FormData) {
+  const t = await ownTournament(str(formData, "tournamentId"));
+  await db.tournament.update({
+    where: { id: t.id },
+    data: {
+      bracketFormat: pickedFormat(formData),
+      roundRobinMax: clamp(int(formData, "roundRobinMax", 3), 2, 8),
+      thirdPlaceMatch: formData.get("thirdPlaceMatch") === "on",
+    },
+  });
+  return t;
+}
+
+export async function saveBracketSettings(formData: FormData) {
+  const t = await bracketSettings(formData);
+  go(`/panel/torneos/${t.id}/llaves`, "ok", "Formato guardado. Vale para las llaves que generes desde ahora.");
+}
+
 export async function generateOne(formData: FormData) {
   const c = await ownCategory(str(formData, "categoryId"));
   const path = `/panel/torneos/${c.tournamentId}/llaves?c=${c.id}`;
+  await db.category.update({
+    where: { id: c.id },
+    data: { format: pickedFormat(formData), thirdPlaceMatch: formData.get("thirdPlaceMatch") === "on" },
+  });
   const result = await generateBracket(c.id);
   if (!result.ok) go(path, "error", result.error);
   go(path, "ok", result.ok && result.matches ? `Llave generada: ${result.matches} peleas` : "Sin peleas: hace falta más de un inscripto");
@@ -588,8 +613,72 @@ export async function clearOne(formData: FormData) {
   go(path, "ok", "Llave borrada");
 }
 
+export async function buildBracket(formData: FormData) {
+  const c = await ownCategory(str(formData, "categoryId"));
+  const path = `/panel/torneos/${c.tournamentId}/llaves?c=${c.id}`;
+  const size = int(formData, "size", 0);
+  const leaves = Array.from({ length: clamp(size, 0, 128) }, (_, i) => str(formData, `leaf-${i}`) || null);
+  const entries = await db.entry.findMany({ where: { categoryId: c.id }, select: { id: true } });
+  const problem = checkLeaves(leaves, entries.map((e) => e.id));
+  if (problem) go(path, "error", problem);
+  const result = await generateBracket(c.id, leaves);
+  if (!result.ok) go(path, "error", result.error);
+  if (c.areaId) void publish(c.areaId);
+  const left = entries.length - leaves.filter(Boolean).length;
+  go(
+    path,
+    "ok",
+    `Llave armada a mano: ${result.ok ? result.matches : 0} peleas${left > 0 ? `. Quedaron ${left} inscriptos afuera` : ""}`,
+  );
+}
+
+export async function mergeCategories(formData: FormData) {
+  const target = await ownCategory(str(formData, "targetId"));
+  const path = `/panel/torneos/${target.tournamentId}/llaves`;
+  const sourceId = str(formData, "sourceId");
+  if (!sourceId) go(path, "error", "Elegí las dos categorías a fusionar");
+  const source = await ownCategory(sourceId);
+  const problem = mergeProblem(target, source);
+  if (problem) go(path, "error", problem);
+  const played = await db.match.count({
+    where: { categoryId: { in: [target.id, source.id] }, status: { in: ["LIVE", "DONE"] } },
+  });
+  if (played > 0) go(path, "error", "Alguna de las dos ya tiene peleas jugadas: no se pueden fusionar");
+
+  const already = new Set(
+    (await db.entry.findMany({ where: { categoryId: target.id }, select: { participantId: true } })).map(
+      (e) => e.participantId,
+    ),
+  );
+  const moving = (await db.entry.findMany({ where: { categoryId: source.id } })).filter(
+    (e) => !already.has(e.participantId),
+  );
+  const name = str(formData, "name").slice(0, 120) || mergedName(target.name, source.name);
+  const widest = (a: number | null, b: number | null, pick: (...n: number[]) => number) =>
+    a == null || b == null ? null : pick(a, b);
+  await db.$transaction([
+    db.match.deleteMany({ where: { categoryId: { in: [target.id, source.id] } } }),
+    db.entry.updateMany({ where: { id: { in: moving.map((e) => e.id) } }, data: { categoryId: target.id, seed: null } }),
+    db.category.update({
+      where: { id: target.id },
+      data: {
+        name,
+        bracketFormat: null,
+        gender: target.gender === source.gender ? target.gender : null,
+        ageGroup: target.ageGroup === source.ageGroup ? target.ageGroup : null,
+        level: target.level === source.level ? target.level : null,
+        weightMin: widest(target.weightMin, source.weightMin, Math.min),
+        weightMax: widest(target.weightMax, source.weightMax, Math.max),
+      },
+    }),
+    db.category.delete({ where: { id: source.id } }),
+  ]);
+  for (const areaId of new Set([target.areaId, source.areaId])) if (areaId) void publish(areaId);
+  go(`${path}?c=${target.id}`, "ok", `Categorías fusionadas en "${name}": ${already.size + moving.length} inscriptos. Ahora generá la llave.`);
+}
+
 export async function generateAll(formData: FormData) {
-  const t = await ownTournament(str(formData, "tournamentId"));
+  const t = await bracketSettings(formData);
   const categories = await db.category.findMany({
     where: { tournamentId: t.id },
     select: { id: true, _count: { select: { entries: true, matches: true } } },
