@@ -52,6 +52,18 @@ export default async function ParticipantsPage({
     <>
       <Notice sp={sp} />
 
+      <div className="card mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="font-semibold">Cargar desde un Excel</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Subí la planilla de inscriptos: se crean solos los competidores, sus categorías y sus escuelas.
+          </p>
+        </div>
+        <Link href={`/panel/torneos/${t.id}/participantes/importar`} className="btn btn-primary">
+          Subir planilla
+        </Link>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <details className="card" open={t._count.participants === 0}>
           <summary className="font-semibold">Agregar participante</summary>

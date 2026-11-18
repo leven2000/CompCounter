@@ -56,6 +56,7 @@ No hay nada que instalar: todo funciona en el navegador, incluidos el pad de los
 **Torneos**
 - Categorías por modalidad, género, edad, cinturón o nivel y peso, con un generador que las arma en bloque.
 - Competidores con academia, país, foto, pesaje y aviso cuando alguien queda fuera de peso.
+- Carga de inscriptos desde un Excel o CSV: crea competidores, categorías y escuelas, muestra qué va a cargar antes de guardar y no duplica al volver a subir.
 - Llaves de eliminación simple y de todos contra todos, que separan a los compañeros de academia y respetan cabezas de serie.
 - Horarios calculados por área según la duración de cada categoría.
 - Combates sueltos sin torneo ni llave, para exhibiciones o peleas estelares.
@@ -162,15 +163,31 @@ Cada push a `main` y cada pull request corren en GitHub Actions ([`.github/workf
 
 1. Aplica todas las migraciones desde cero sobre un Postgres efímero.
 2. Controla que el esquema no haya cambiado sin su migración.
-3. Corre lint, las pruebas de puntaje y sanciones, el chequeo de tipos y el build.
+3. Corre lint, las pruebas de puntaje y sanciones, las de la carga desde Excel, el chequeo de tipos y el build.
 
 Railway despliega solo cada commit que llega a `main`. Con la opción **Wait for CI** del servicio (Settings → Source), espera a que el CI termine y saltea el despliegue si falla.
 
-Las pruebas de puntaje también corren en local:
+Las pruebas también corren en local:
 
 ```bash
 npm run probar:puntaje
 ```
+
+```bash
+npm run probar:importacion
+```
+
+## Carga desde Excel
+
+En Participantes → Subir planilla se carga un Excel (.xlsx) o un CSV con una fila por competidor. La planilla modelo se descarga desde esa misma pantalla.
+
+- Solo el nombre es obligatorio. Con disciplina y categoría, el competidor queda inscripto y la categoría se crea si no existe.
+- Las columnas se reconocen por su título, en cualquier orden, y se pueden corregir a mano antes de cargar.
+- Cada disciplina de la planilla se asocia a una modalidad del sistema. Las que no se reconocen hay que elegirlas.
+- Quien compite en dos categorías va en dos filas. La misma persona de la misma escuela no se duplica, tampoco al subir otra planilla.
+- El archivo se lee en el navegador. Los Excel de formato viejo (.xls) hay que guardarlos como .xlsx.
+
+La planilla modelo se regenera con `npm run plantilla`.
 
 ## Modalidades incluidas
 

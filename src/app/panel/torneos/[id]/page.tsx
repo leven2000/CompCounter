@@ -45,14 +45,14 @@ export default async function TournamentSummary({
       title: "Categorías",
       detail: `${t._count.categories} creadas`,
       done: t._count.categories > 0,
-      hint: "Modalidad, peso, cinturón o nivel, edad y género.",
+      hint: "Modalidad, peso, cinturón o nivel, edad y género. También se crean solas al subir un Excel.",
     },
     {
       href: `${base}/participantes`,
       title: "Participantes",
       detail: `${t._count.participants} cargados`,
       done: t._count.participants > 0,
-      hint: "Cargalos a mano o pegá una lista. Después registrás el pesaje.",
+      hint: "Subí un Excel, cargalos a mano o pegá una lista. Después registrás el pesaje.",
     },
     {
       href: `${base}/llaves`,

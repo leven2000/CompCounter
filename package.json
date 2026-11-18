@@ -10,18 +10,21 @@
     "db:migrate": "prisma migrate dev",
     "db:bootstrap": "node --env-file=.env scripts/bootstrap.mjs",
     "lint": "eslint",
-    "probar:puntaje": "node scripts/probar-puntaje.mjs"
+    "probar:puntaje": "node scripts/probar-puntaje.mjs",
+    "probar:importacion": "node scripts/probar-importacion.mjs",
+    "plantilla": "node scripts/crear-plantilla.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
+    "fflate": "0.8.3",
     "flag-icons": "^7.6.0",
     "jose": "^6.2.17",
     "next": "16.4.6",
+    "prisma": "^6.19.3",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "prisma": "^6.19.3"
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",

@@ -10,8 +10,10 @@ import { clearBracket, generateBracket } from "@/lib/bracket";
 import { findCountry } from "@/lib/countries";
 import { publish, tableAction } from "@/lib/live";
 import { createDemo } from "@/lib/demo";
+import { buildPlan, personKey, sanitizeRows, type ImportState } from "@/lib/import";
+import { loadExisting } from "@/lib/import-data";
 import { ensureQuickArea } from "@/lib/quick";
-import { getRuleset, readSanctions } from "@/lib/rules";
+import { getRuleset, readSanctions, RULESETS } from "@/lib/rules";
 import { int, isHexColor, newCode, num, optStr, slugify, str } from "@/lib/util";
 
 const go = (path: string, kind: "ok" | "error", message: string): never =>
@@ -444,6 +446,125 @@ export async function importParticipants(formData: FormData) {
     created += 1;
   }
   go(path, created ? "ok" : "error", `${created} participantes importados${skipped ? `, ${skipped} líneas salteadas` : ""}`);
+}
+
+function chunk<T>(items: T[], size: number) {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+export async function importSheet(_previous: ImportState, formData: FormData): Promise<ImportState> {
+  const t = await ownTournament(str(formData, "tournamentId"));
+  let payload: { rows?: unknown; choices?: unknown; areaId?: unknown; country?: unknown };
+  try {
+    payload = JSON.parse(String(formData.get("payload") ?? "")) ?? {};
+  } catch {
+    payload = {};
+  }
+  const rows = sanitizeRows(payload.rows);
+  if (!rows) return { error: "No llegó la planilla. Volvé a elegir el archivo." };
+
+  const choices: Record<string, string> = {};
+  if (payload.choices && typeof payload.choices === "object") {
+    for (const [key, value] of Object.entries(payload.choices)) {
+      if (RULESETS.some((r) => r.id === value)) choices[key] = String(value);
+    }
+  }
+
+  const plan = buildPlan(rows, choices, await loadExisting(t.id));
+  if (plan.blockers.length > 0) return { error: plan.blockers[0] };
+
+  const area =
+    typeof payload.areaId === "string" && payload.areaId
+      ? await db.area.findFirst({ where: { id: payload.areaId, tournamentId: t.id }, select: { id: true } })
+      : null;
+  const fallbackCountry = typeof payload.country === "string" ? findCountry(payload.country) : null;
+  const newCategories = plan.categories.filter((c) => !c.existingId);
+  const newPeople = plan.people.filter((p) => !p.existingId);
+  let entries = 0;
+
+  await db.$transaction(
+    async (tx) => {
+      const last = await tx.category.aggregate({ where: { tournamentId: t.id }, _max: { order: true } });
+      let order = last._max.order ?? 0;
+      const categoryIds = new Map<string, string>();
+      for (const c of plan.categories) if (c.existingId) categoryIds.set(c.key, c.existingId);
+      for (const group of chunk(newCategories, 200)) {
+        const created = await tx.category.createManyAndReturn({
+          data: group.map((c) => {
+            const rules = getRuleset(c.ruleset);
+            return {
+              tournamentId: t.id,
+              name: c.name,
+              ruleset: rules.id,
+              gender: c.gender,
+              weightMin: c.weightMin,
+              weightMax: c.weightMax,
+              rounds: rules.rounds,
+              roundSeconds: rules.roundSeconds,
+              restSeconds: rules.restSeconds,
+              areaId: area?.id ?? null,
+              order: ++order,
+            };
+          }),
+          select: { id: true, name: true },
+        });
+        const byName = new Map(created.map((row) => [row.name, row.id]));
+        for (const c of group) {
+          const id = byName.get(c.name);
+          if (id) categoryIds.set(c.key, id);
+        }
+      }
+
+      const personIds = new Map<string, string>();
+      for (const p of plan.people) if (p.existingId) personIds.set(p.key, p.existingId);
+      for (const group of chunk(newPeople, 200)) {
+        const created = await tx.participant.createManyAndReturn({
+          data: group.map((p) => ({
+            tournamentId: t.id,
+            firstName: p.firstName,
+            lastName: p.lastName,
+            team: p.team,
+            country: findCountry(p.country) ?? fallbackCountry,
+            gender: p.gender,
+            birthYear: p.birthYear,
+            level: p.level,
+            weight: p.weight,
+          })),
+          select: { id: true, firstName: true, lastName: true, team: true },
+        });
+        for (const row of created) personIds.set(personKey(row.firstName, row.lastName, row.team ?? ""), row.id);
+      }
+
+      const pairs = plan.people.flatMap((p) =>
+        p.categoryKeys.flatMap((key) => {
+          const participantId = personIds.get(p.key);
+          const categoryId = categoryIds.get(key);
+          return participantId && categoryId ? [{ participantId, categoryId }] : [];
+        }),
+      );
+      for (const group of chunk(pairs, 1000)) {
+        const result = await tx.entry.createMany({ data: group, skipDuplicates: true });
+        entries += result.count;
+      }
+    },
+    { timeout: 30_000, maxWait: 10_000 },
+  );
+
+  const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const known = plan.stats.knownPeople;
+  return go(
+    `/panel/torneos/${t.id}/participantes`,
+    "ok",
+    `Planilla cargada: ${count(newPeople.length, "competidor nuevo", "competidores nuevos")}, ${count(
+      newCategories.length,
+      "categoría nueva",
+      "categorías nuevas",
+    )} y ${count(entries, "inscripción", "inscripciones")}.${
+      known ? ` ${count(known, "competidor ya estaba cargado", "competidores ya estaban cargados")}.` : ""
+    }`,
+  );
 }
 
 export async function generateOne(formData: FormData) {

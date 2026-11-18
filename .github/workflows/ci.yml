@@ -67,6 +67,9 @@ jobs:
       - name: Pruebas de puntaje y sanciones
         run: npm run probar:puntaje
 
+      - name: Pruebas de la carga desde Excel
+        run: npm run probar:importacion
+
       - name: Generar los tipos de rutas
         run: npx next typegen
 
